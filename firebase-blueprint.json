@@ -1,0 +1,26 @@
+{
+  "collections": {
+    "routines": {
+      "schema": {
+        "id": "string",
+        "studentName": "string",
+        "studentClass": "string",
+        "studentRoll": "string",
+        "selectedMonth": "string",
+        "daysCount": "number",
+        "startDayIndex": "number",
+        "col1Header": "string",
+        "col2Header": "string",
+        "col3Header": "string",
+        "col4Header": "string",
+        "col5Header": "string",
+        "monthlyAdvice": "string",
+        "themeMode": "string",
+        "density": "string",
+        "rows": "array",
+        "updatedAt": "timestamp"
+      },
+      "indexes": []
+    }
+  }
+}

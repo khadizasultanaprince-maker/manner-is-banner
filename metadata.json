@@ -1,0 +1,6 @@
+{
+  "name": "Bengali Student Monthly Routine Generator",
+  "description": "A professional, A4-sized printable Student Monthly Routine Generator in Bengali designed for offline use (মাসিক রুটিন জেনারেটর).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
