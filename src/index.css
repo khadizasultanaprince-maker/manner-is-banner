@@ -39,8 +39,8 @@
     box-shadow: none !important;
     background: white !important;
     box-sizing: border-box !important;
-    min-height: 27cm !important;
-    max-height: 28.5cm !important;
+    min-height: 28.2cm !important;
+    max-height: 28.2cm !important;
   }
 
   /* Force page settings with tighter margins to maximize height */
@@ -56,142 +56,280 @@
   }
 
   th, td {
-    border: 1.2px solid #000000 !important;
+    border: 1.1px solid #475569 !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
 
   /* ==================== 1. COMPACT ROUTINE SHEET PRINT OPTIMIZATIONS ==================== */
   #routine-a4-sheet {
-    min-height: 0 !important;
+    min-height: 25.8cm !important;
     height: 100% !important;
-    max-height: 28.2cm !important;
-    padding: 1mm 1mm 1mm 1mm !important;
+    max-height: 25.8cm !important;
+    padding: 4mm 6mm 4mm 6mm !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
+    background: white !important;
   }
 
   #routine-a4-sheet h1 {
-    font-size: 13.5px !important;
+    font-size: 21px !important;
     margin: 0 !important;
-    line-height: 1.2 !important;
+    line-height: 1.25 !important;
   }
 
   #routine-a4-sheet .border-b-2 {
-    border-bottom: 1.5px solid black !important;
-    padding-bottom: 2px !important;
-    margin-bottom: 4px !important;
+    border-bottom: 2px solid black !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 8px !important;
   }
 
   /* Compact header fields */
   #routine-a4-sheet .grid {
-    gap: 1px !important;
+    gap: 4px !important;
   }
   #routine-a4-sheet .text-xs {
-    font-size: 8px !important;
+    font-size: 10.5px !important;
   }
   #routine-a4-sheet .border-b {
-    padding-bottom: 0px !important;
+    padding-bottom: 1px !important;
   }
 
   /* Compact digital stats panel */
-  #routine-a4-sheet .bg-neutral-50 {
-    margin-bottom: 3.5px !important;
-    padding: 1px 4px !important;
-    border-radius: 3px !important;
+  #routine-a4-sheet .bg-neutral-50,
+  #routine-a4-sheet .bg-gradient-to-r {
+    margin-bottom: 8px !important;
+    padding: 5px 10px !important;
+    border-radius: 8px !important;
   }
   #routine-a4-sheet .bg-neutral-50 span,
-  #routine-a4-sheet .bg-neutral-50 p {
-    font-size: 7.8px !important;
-    line-height: 1.1 !important;
+  #routine-a4-sheet .bg-neutral-50 p,
+  #routine-a4-sheet .text-\[11px\] {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
   }
   #routine-a4-sheet .bg-neutral-50 .text-xs {
-    font-size: 8px !important;
+    font-size: 11px !important;
   }
 
   /* Compact tables for 31-day rows */
   #routine-a4-sheet table {
-    font-size: 8px !important;
-    margin-bottom: 1px !important;
+    font-size: 10px !important;
+    margin-bottom: 4px !important;
   }
 
   #routine-a4-sheet th {
-    font-size: 7.2px !important;
-    padding: 1.2px 0.2px !important;
-    line-height: 1.05 !important;
-    height: 20px !important;
+    font-size: 10px !important;
+    padding: 3px 0.5px !important;
+    line-height: 1.2 !important;
+    height: 24px !important;
   }
 
   #routine-a4-sheet tr {
-    height: 15.5px !important;
-    max-height: 15.5px !important;
+    height: var(--dynamic-row-height, 20px) !important;
+    max-height: var(--dynamic-row-height, 20px) !important;
   }
 
   #routine-a4-sheet td {
-    padding: 0px 0.2px !important;
-    height: 15.5px !important;
-    font-size: 8px !important;
-    line-height: 1 !important;
+    padding: 0.5px 0.5px !important;
+    height: var(--dynamic-row-height, 20px) !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
   }
 
   #routine-a4-sheet td span {
-    font-size: 9px !important;
+    font-size: 10px !important;
   }
 
   #routine-a4-sheet td input {
     height: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
-    font-size: 8px !important;
-    line-height: 1 !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
     background-color: transparent !important;
     border: none !important;
   }
 
-  #routine-a4-sheet td button {
-    height: 15.5px !important;
+  #routine-a4-sheet td .prayer-btn {
+    height: 17px !important;
+    width: 17px !important;
+    min-height: 17px !important;
+    min-width: 17px !important;
+    border-radius: 9999px !important;
+    padding: 0 !important;
+    margin: auto !important;
+    line-height: 1 !important;
+    font-size: 9px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid #475569 !important;
+  }
+
+  #routine-a4-sheet td .prayer-btn span {
+    font-size: 9px !important;
+    line-height: 1 !important;
+  }
+
+  #routine-a4-sheet td button:not(.prayer-btn) {
+    height: 100% !important;
+    width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
-    line-height: 1 !important;
-    font-size: 8px !important;
+    line-height: 1.2 !important;
+    font-size: 10px !important;
     border: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    background: transparent !important;
   }
 
   /* Compact footer items */
-  #routine-a4-sheet .mt-4 {
-    margin-top: 3px !important;
-    padding-top: 1.5px !important;
+  #routine-a4-sheet .mt-16,
+  #routine-a4-sheet .mt-24,
+  #routine-a4-sheet .print\:mt-28 {
+    margin-top: 15px !important;
+    padding-top: 6px !important;
   }
 
   #routine-a4-sheet .mb-3 {
-    margin-bottom: 2px !important;
+    margin-bottom: 6px !important;
   }
 
   #routine-a4-sheet p.text-\[11px\] {
-    font-size: 8px !important;
-    padding: 1px 3px !important;
-    line-height: 1.1 !important;
+    font-size: 10.5px !important;
+    padding: 3px 6px !important;
+    line-height: 1.3 !important;
     margin: 0 !important;
   }
 
   #routine-a4-sheet .grid-cols-3 {
-    margin-top: 2px !important;
-    gap: 8px !important;
+    margin-top: 15px !important;
+    gap: 12px !important;
   }
 
   #routine-a4-sheet .grid-cols-3 div {
-    font-size: 7.8px !important;
-    padding-top: 1px !important;
+    font-size: 11px !important;
+    padding-top: 4px !important;
   }
 
   #routine-a4-sheet .grid-cols-3 .text-right {
-    font-size: 6.8px !important;
+    font-size: 10px !important;
+  }
+
+  /* ==================== 1.5 PARENT GUIDELINES SHEET PRINT OPTIMIZATIONS ==================== */
+  .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  #parent-guidelines-a4-sheet {
+    min-height: 25.8cm !important;
+    height: 100% !important;
+    max-height: 25.8cm !important;
+    padding: 6mm 10mm 6mm 10mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    background: white !important;
+  }
+
+  #parent-guidelines-a4-sheet header h1 {
+    font-size: 22px !important;
+  }
+
+  #parent-guidelines-a4-sheet h2 {
+    font-size: 14px !important;
+  }
+
+  #parent-guidelines-a4-sheet .guidelines-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  #parent-guidelines-a4-sheet .guideline-card-span-2 {
+    grid-column: span 2 / span 2 !important;
+  }
+
+  #parent-guidelines-a4-sheet .guideline-card {
+    padding: 8px 12px !important;
+    margin-bottom: 0px !important;
+    border-radius: 12px !important;
+  }
+
+  #parent-guidelines-a4-sheet .guideline-title {
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+  }
+
+  #parent-guidelines-a4-sheet .guideline-text {
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Pillars section print rules */
+  #parent-guidelines-a4-sheet .pillars-section {
+    padding: 10px 14px !important;
+    margin-top: 10px !important;
+  }
+
+  #parent-guidelines-a4-sheet .pillars-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  #parent-guidelines-a4-sheet .pillar-card {
+    padding: 8px 10px !important;
+  }
+
+  #parent-guidelines-a4-sheet .pillar-title {
+    font-size: 12px !important;
+  }
+
+  #parent-guidelines-a4-sheet .pillar-desc {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+
+  #parent-guidelines-a4-sheet .pledge-card {
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+    margin-top: 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  #parent-guidelines-a4-sheet .pledge-title {
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+  }
+
+  #parent-guidelines-a4-sheet .pledge-text {
+    font-size: 11.5px !important;
+    line-height: 1.5 !important;
+  }
+
+  #parent-guidelines-a4-sheet .signature-area {
+    margin-top: 20px !important;
+    gap: 15px !important;
+  }
+
+  #parent-guidelines-a4-sheet .signature-label {
+    font-size: 11.5px !important;
+  }
+
+  #parent-guidelines-a4-sheet footer {
+    font-size: 10.5px !important;
+    padding-top: 6px !important;
+    margin-top: 10px !important;
   }
 
   /* ==================== 2. COMPACT SUMMARY SHEET PRINT OPTIMIZATIONS ==================== */
@@ -363,6 +501,223 @@
     margin-top: 1.5px !important;
     padding-top: 1px !important;
     font-size: 7vw !important;
+    font-size: 7px !important;
+  }
+
+  /* ==================== 3. COMPACT EVENT PLAN SHEET PRINT OPTIMIZATIONS ==================== */
+  #event-a4-sheet {
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 28.2cm !important;
+    padding: 1mm 2mm 1mm 2mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  #event-a4-sheet header {
+    padding-bottom: 2px !important;
+    margin-bottom: 3px !important;
+    margin-top: 1px !important;
+  }
+
+  #event-a4-sheet header h1 {
+    font-size: 14px !important;
+  }
+
+  #event-a4-sheet header p {
+    font-size: 9px !important;
+    margin-top: 2px !important;
+    padding: 1px 4px !important;
+  }
+
+  #event-a4-sheet h2 {
+    font-size: 8.5px !important;
+    margin-bottom: 2px !important;
+    padding-top: 1.5px !important;
+    padding-bottom: 1.5px !important;
+    border-radius: 4px !important;
+  }
+
+  #event-a4-sheet section {
+    margin-bottom: 3px !important;
+  }
+
+  #event-a4-sheet .grid-cols-1 {
+    gap: 1.5px !important;
+  }
+
+  #event-a4-sheet .flex.items-center.gap-3 {
+    padding: 1px 3px !important;
+    border-radius: 4px !important;
+    gap: 4px !important;
+  }
+
+  #event-a4-sheet .w-7.h-7 {
+    width: 14px !important;
+    height: 14px !important;
+    font-size: 8px !important;
+  }
+
+  #event-a4-sheet .flex-1 p {
+    font-size: 7.8px !important;
+    line-height: 1.1 !important;
+  }
+
+  #event-a4-sheet .flex-1 p span {
+    font-size: 7.8px !important;
+  }
+
+  /* Two Column layout for Quiz and Discussion */
+  #event-a4-sheet .grid-cols-2 {
+    gap: 4px !important;
+    margin-bottom: 3px !important;
+  }
+
+  #event-a4-sheet .grid-cols-2 section h2 {
+    margin-bottom: 2px !important;
+  }
+
+  #event-a4-sheet .bg-amber-50\/50,
+  #event-a4-sheet .bg-teal-50\/50 {
+    padding: 2.5px 4px !important;
+    border-radius: 6px !important;
+  }
+
+  #event-a4-sheet .text-\[11\.5px\] {
+    font-size: 7.8px !important;
+    line-height: 1.25 !important;
+    gap: 1.5px !important;
+  }
+
+  #event-a4-sheet .text-\[11\.5px\] > div {
+    padding-top: 1px !important;
+  }
+
+  /* Pledge Card spacing */
+  #event-a4-sheet .bg-indigo-50\/60 {
+    padding: 3px 5px !important;
+    border-radius: 6px !important;
+  }
+
+  #event-a4-sheet .bg-indigo-50\/60 h3 {
+    font-size: 8.5px !important;
+    margin-bottom: 1px !important;
+  }
+
+  #event-a4-sheet .bg-indigo-50\/60 p {
+    font-size: 7.8px !important;
+    line-height: 1.25 !important;
+    margin-top: 1.5px !important;
+    margin-bottom: 1.5px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  #event-a4-sheet .bg-indigo-50\/60 .mt-4 {
+    margin-top: 2.5px !important;
+  }
+
+  #event-a4-sheet .bg-indigo-50\/60 .mt-4 .text-\[10px\] {
+    font-size: 7px !important;
+  }
+
+  #event-a4-sheet .bg-indigo-50\/60 .mt-4 .text-right .text-\[10px\] {
+    font-size: 7px !important;
+  }
+
+  #event-a4-sheet .border-t.pt-2 {
+    margin-top: 1.5px !important;
+    padding-top: 1px !important;
+    font-size: 7px !important;
+  }
+
+  /* ==================== 4. COMPACT SLIDES SHEET PRINT OPTIMIZATIONS ==================== */
+  #slides-a4-sheet {
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 28.2cm !important;
+    padding: 1mm 2mm 1mm 2mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  #slides-a4-sheet header {
+    padding-bottom: 2px !important;
+    margin-bottom: 3px !important;
+    margin-top: 1px !important;
+  }
+
+  #slides-a4-sheet header h1 {
+    font-size: 13px !important;
+  }
+
+  #slides-a4-sheet header p {
+    font-size: 8px !important;
+    margin-top: 1px !important;
+    padding: 1px 3px !important;
+  }
+
+  /* 3x3 Grid for 9 slides */
+  #slides-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .slide-handout-card {
+    padding: 4px 6px 4px 6px !important;
+    border-radius: 6px !important;
+    border-width: 1px !important;
+    height: 7.4cm !important; /* Total height: 7.4 * 3 = 22.2cm, perfect fit! */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .slide-handout-card h3 {
+    font-size: 8px !important;
+    line-height: 1.15 !important;
+    margin-bottom: 1px !important;
+  }
+
+  .slide-handout-card p.slide-subtitle {
+    font-size: 7px !important;
+    line-height: 1.15 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .slide-handout-card ul {
+    margin-top: 1px !important;
+    margin-bottom: 1px !important;
+    padding-left: 6px !important;
+  }
+
+  .slide-handout-card li {
+    font-size: 6.2px !important;
+    line-height: 1.15 !important;
+    margin-bottom: 1.5px !important;
+  }
+
+  .slide-handout-card .slide-footer-msg {
+    font-size: 6px !important;
+    padding: 1.5px 2px !important;
+    border-radius: 2px !important;
+    margin-top: auto !important;
+    line-height: 1.1 !important;
+  }
+
+  #slides-a4-sheet .border-t {
+    margin-top: 1px !important;
+    padding-top: 1px !important;
     font-size: 7px !important;
   }
 }

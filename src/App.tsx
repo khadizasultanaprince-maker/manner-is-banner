@@ -6,7 +6,6 @@ import {
   Sparkles, 
   User, 
   Calendar, 
-  Award, 
   Info, 
   Sliders, 
   CheckSquare, 
@@ -37,7 +36,9 @@ import {
   ExternalLink,
   Code,
   Terminal,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Monitor,
+  ChevronLeft
 } from "lucide-react";
 import { db } from "./firebase";
 import { 
@@ -67,6 +68,157 @@ function toBnNum(num: number | string): string {
     })
     .join("");
 }
+
+// 9-Slide Presentation Content for Parent Meeting
+const slidesData = [
+  {
+    id: 1,
+    numberBn: "১",
+    title: "স্বাগতম ও শিরোনাম",
+    subTitle: "অভিভাবক মতবিনিময় সভা: আগামীর স্বপ্নে আমরা ও আমাদের সন্তান।",
+    points: [
+      "ষষ্ঠ-অষ্টম শ্রেণির শিক্ষার্থীদের সামগ্রিক উন্নয়নে বিদ্যালয় ও পরিবারের ভূমিকা।"
+    ],
+    message: "আস্থা ও আন্তরিকতায়— ডি-লিকন মডেল একাডেমী পরিবার।",
+    visualText: "বিদ্যালয়ের ছবি বা একটি প্রদীপ্ত বাতির ব্যাকগ্রাউন্ড",
+    iconName: "Sparkles",
+    bgColor: "from-indigo-900 to-indigo-950 text-white",
+    accentBg: "bg-indigo-50 text-indigo-700 border-indigo-200"
+  },
+  {
+    id: 2,
+    numberBn: "২",
+    title: "আমাদের অঙ্গীকার (বিদ্যালয়ের ভূমিকা)",
+    subTitle: "আমরা আপনার সন্তানের জন্য সেরাটা দিচ্ছি।",
+    points: [
+      "সরকার নির্ধারিত আধুনিক ও জীবনমুখী শিক্ষাক্রম অনুসরণ।",
+      "দক্ষ শিক্ষক মণ্ডলী দ্বারা কার্যকর ও আনন্দদায়ক পাঠদান।",
+      "শ্রেণিকক্ষেই পাঠ্যবিষয়ের মূল ধারণা স্পষ্ট করার প্রচেষ্টা।"
+    ],
+    message: "শ্রেণিকক্ষে পাঠদানের একটি প্রাণবন্ত ছবি ও দৃশ্যকল্প।",
+    iconName: "CheckSquare",
+    bgColor: "from-blue-900 to-blue-950 text-white",
+    accentBg: "bg-blue-50 text-blue-700 border-blue-200"
+  },
+  {
+    id: 3,
+    numberBn: "৩",
+    title: "বাড়িতে শিখন পরিবেশ: ৩টি বিশেষ অভ্যাস",
+    subTitle: "পাঠের ধারাবাহিকতা রক্ষায় আপনার করণীয়।",
+    points: [
+      "স্কুল থেকে ফেরার পরপরই: দুপুরের খাবার ও বিশ্রামের পর যেন দ্রুত হোমワーク শেষ করে ফেলে। এতে ভুলে যাওয়ার প্রবণতা কমে।",
+      "সন্ধ্যার সোনালী সময়: বাদ মাগরিব থেকে রাত ৯টা পর্যন্ত পড়ার টেবিলে পূর্ণ সক্রিয়তা নিশ্চিত করা।",
+      "ভোরের বরকত: খুব ভোরে ঘুম থেকে ওঠার অভ্যাস। (ফোরকানিয়া না থাকলে অন্তত ২ ঘণ্টা পাঠ্যবই পড়া)।"
+    ],
+    message: "একটি ঘড়ির আইকন এবং পড়ার টেবিলের ছবি।",
+    iconName: "Clock",
+    bgColor: "from-amber-900 to-yellow-950 text-white",
+    accentBg: "bg-amber-50 text-amber-700 border-amber-200"
+  },
+  {
+    id: 4,
+    numberBn: "৪",
+    title: "পাঠ্যবই শুধু নম্বর পাওয়ার জন্য নয়",
+    subTitle: "এই বয়সের পাঠ্যসূচি জীবনের ভিত্তি।",
+    points: [
+      "গণিত: কেবল হিসাব নয়, এটি যুক্তিনির্ভর চিন্তা করতে শেখায়।",
+      "বিজ্ঞান: চারপাশের জগৎকে চিনে নিজেকে নিরাপদ রাখার কৌশল।",
+      "ইতিহাস ও সমাজ: সুনাগরিক হিসেবে নিজের শেকড়কে চেনা।"
+    ],
+    message: "আজকের পাঠ্যবিষয়গুলো তাদের আগামী জীবনের সমস্যার সমাধান।",
+    iconName: "BookOpen",
+    bgColor: "from-rose-900 to-purple-950 text-white",
+    accentBg: "bg-rose-50 text-rose-700 border-rose-200"
+  },
+  {
+    id: 5,
+    numberBn: "৫",
+    title: "ভুল সংশোধন: আজই হোক শুরু",
+    subTitle: "ছোট ভুল যেন বড় অভ্যাসে পরিণত না হয়।",
+    points: [
+      "সন্তানের আচরণের ছোট ভুল বা অবাধ্যতাকে আজই আদরের সাথে সংশোধন করুন।",
+      "আজকের অবহেলা আগামীকাল বদঅভ্যাস বা আসক্তিতে (যেমন: মোবাইল আসক্তি) রূপ নিতে পারে।"
+    ],
+    message: "দমনের চেয়ে সংশোধন উত্তম; কিন্তু তা হতে হবে এখনই।",
+    iconName: "AlertTriangle",
+    bgColor: "from-purple-900 to-purple-950 text-white",
+    accentBg: "bg-purple-50 text-purple-700 border-purple-200"
+  },
+  {
+    id: 6,
+    numberBn: "৬",
+    title: "নৈতিকতা ও শুদ্ধাচারের ৪টি স্তম্ভ",
+    subTitle: "আমাদের সন্তান হবে আদর্শ মানুষ।",
+    points: [
+      "শিষ্টাচার ও অভিবাদন (সালাম/আদাব): বড়দের সম্মান এবং ছোটদের স্নেহ করার হাতেকলমে শিক্ষা।",
+      "সত্যবাদিতা ও সততা: নিজের ভুল স্বীকার করার সাহস এবং অন্যের জিনিসের প্রতি লোভ না করা।",
+      "শৃঙ্খল জীবন: নিজের পড়ার টেবিল, বিছানা ও পোশাক পরিপাটি রাখার অভ্যাস।",
+      "ডিজিটাল শুদ্ধাচার: প্রয়োজনে প্রযুক্তি ব্যবহার করা, কিন্তু আসক্ত না হওয়া এবং সোশ্যাল মিডিয়ায় মার্জিত থাকা।"
+    ],
+    message: "৪টি শুদ্ধাচারের আলোয় আলোকিত চরিত্র।",
+    iconName: "Award",
+    bgColor: "from-emerald-900 to-emerald-950 text-white",
+    accentBg: "bg-emerald-50 text-emerald-700 border-emerald-200"
+  },
+  {
+    id: 7,
+    numberBn: "৭",
+    title: "ধর্মীয় শিক্ষা ও মূল্যবোধ",
+    subTitle: "ধর্মের মর্মবাণীই হলো সদাচরণ।",
+    points: [
+      "ধর্মীয় অনুশাসন পালনে উৎসাহ প্রদান।",
+      "ধর্মীয় শিক্ষার পাশাপাশি মানুষের সাথে ভালো ব্যবহার (ম্যানার) শেখানো।"
+    ],
+    message: "শিক্ষিত হওয়ার আগে ভালো মানুষ হওয়া জরুরি।",
+    iconName: "Heart",
+    bgColor: "from-pink-900 to-pink-950 text-white",
+    accentBg: "bg-pink-50 text-pink-700 border-pink-200"
+  },
+  {
+    id: 8,
+    numberBn: "৮",
+    title: "বিদ্যালয় ও অভিভাবকের মেলবন্ধন",
+    subTitle: "আমরা এবং আপনারা—একই টিমের সদস্য।",
+    points: [
+      "শিক্ষকদের ওপর আস্থা রাখুন; কোনো সমস্যা হলে সরাসরি আলোচনা করুন।",
+      "আপনার সচেতনতাই সন্তানের সুন্দর ভবিষ্যতের নিশ্চয়তা।"
+    ],
+    message: "স্কুল গড়বে জ্ঞান, পরিবার গড়বে চরিত্র।",
+    iconName: "ArrowLeftRight",
+    bgColor: "from-teal-900 to-teal-950 text-white",
+    accentBg: "bg-teal-50 text-teal-700 border-teal-200"
+  },
+  {
+    id: 9,
+    numberBn: "৯",
+    title: "ধন্যবাদ ও প্রশ্নোত্তর",
+    subTitle: "আপনার মতামত আমাদের কাম্য।",
+    points: [
+      "আলোচনার জন্য ফ্লোর উন্মুক্ত করুন এবং মুক্ত মতামত দিন।",
+      "আজকের সভার সমাপ্তি ও ভবিষ্যৎ শুভকামনা।"
+    ],
+    message: "আজকের উপস্থিতির জন্য আন্তরিক ধন্যবাদ ও সাধুবাদ।",
+    iconName: "CheckCircle",
+    bgColor: "from-slate-900 to-slate-950 text-white",
+    accentBg: "bg-slate-50 text-slate-700 border-slate-200"
+  }
+];
+
+// Helper to get React element for icons in slides
+const getSlideIcon = (name: string, className = "w-5 h-5") => {
+  switch (name) {
+    case "Sparkles": return <Sparkles className={className} />;
+    case "CheckSquare": return <CheckSquare className={className} />;
+    case "Clock": return <Clock className={className} />;
+    case "BookOpen": return <BookOpen className={className} />;
+    case "AlertTriangle": return <AlertTriangle className={className} />;
+    case "Award": return <AwardLucide className={className} />;
+    case "Heart": return <Heart className={className} />;
+    case "ArrowLeftRight": return <ArrowLeftRight className={className} />;
+    case "CheckCircle": return <CheckCircle className={className} />;
+    default: return <Sparkles className={className} />;
+  }
+};
 
 // Bengali Weekdays Configuration starting from Saturday
 const WEEKDAYS = [
@@ -175,8 +327,8 @@ export default function App() {
   const [density, setDensity] = useState<"compact" | "normal" | "spacious">("compact");
   const [themeMode, setThemeMode] = useState<"professional-polish" | "mono-black">("professional-polish");
 
-  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations
-  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations">("routine");
+  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides
+  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides">("routine");
 
   // Supabase & Cloud Integrations states
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("supabase_url") || "");
@@ -198,6 +350,11 @@ export default function App() {
   const [principalName, setPrincipalName] = useState<string>(() => {
     return localStorage.getItem("principalName") || "প্রিন্সিপাল (স্বাক্ষর ও সিল)";
   });
+
+  // Slides state variables
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [slideViewMode, setSlideViewMode] = useState<"interactive" | "print">("interactive");
+  const [slideTheme, setSlideTheme] = useState<"deep-indigo" | "midnight-teal" | "crimson-rose" | "elegant-slate">("deep-indigo");
 
   // Certificate customization states
   const [certTitle, setCertTitle] = useState("উত্তম শিষ্টাচার ও অনুকরণীয় চরিত্র প্রশংসাপত্র");
@@ -1515,6 +1672,10 @@ export default function App() {
                   ? "A4 এওয়ার্ড সার্টিফিকেট প্রিন্ট" 
                   : activeTab === "summary"
                   ? "A4 প্রগতি প্রতিবেদন প্রিন্ট"
+                  : activeTab === "event"
+                  ? "A4 অভিভাবক সভা ইভেন্ট প্ল্যান প্রিন্ট"
+                  : activeTab === "slides"
+                  ? "A4 অভিভাবক সভা স্লাইড হ্যান্ডআউট প্রিন্ট"
                   : "প্রিন্ট প্রযোজ্য নয়"
                 }
               </span>
@@ -1655,13 +1816,13 @@ export default function App() {
                     id="selected-month-field"
                   />
                 </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {PRESET_MONTHS.slice(0, 6).map(m => (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {PRESET_MONTHS.map(m => (
                     <button
                       key={m}
                       onClick={() => setSelectedMonth(`${m} ২০২৬`)}
                       type="button"
-                      className="text-[10px] bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded px-2 py-1 transition-all"
+                      className="text-[10.5px] bg-indigo-50/70 hover:bg-indigo-100 border border-indigo-100 text-indigo-900 rounded-md px-2.5 py-1 font-semibold transition-all shadow-xs"
                     >
                       {m}
                     </button>
@@ -1776,11 +1937,11 @@ export default function App() {
                   <select
                     value={daysCount}
                     onChange={(e) => setDaysCount(Number(e.target.value))}
-                    className="w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded outline-none cursor-pointer"
+                    className="w-full px-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded outline-none cursor-pointer font-medium"
                     id="days-count-dropdown"
                   >
-                    <option value={31}>৩১ দিন (জানু, মার্চ, মে)</option>
-                    <option value={30}>৩০ দিন (এপ্রিল, জুন)</option>
+                    <option value={31}>৩১ দিন (জানু, মার্চ, মে, জুলাই, আগস্ট, অক্টো, ডিসে)</option>
+                    <option value={30}>৩০ দিন (এপ্রিল, জুন, সেপ্টে, নভে)</option>
                     <option value={29}>২৯ দিন (লিপইয়ার ফেব্রুয়ারি)</option>
                     <option value={28}>২৮ দিন (সাধারণ ফেব্রুয়ারি)</option>
                   </select>
@@ -2145,6 +2306,30 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setActiveTab("event")}
+              className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === "event"
+                  ? "bg-black text-white shadow border border-rose-300"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <ClipboardList className="w-4 h-4 text-rose-500" />
+              <span>৪. 📋 অভিভাবক সভা ইভেন্ট প্ল্যান</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("slides")}
+              className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === "slides"
+                  ? "bg-black text-white shadow border border-purple-300"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <Monitor className="w-4 h-4 text-purple-500" />
+              <span>৫. 🖥️ অভিভাবক সভা স্লাইড শো</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab("integrations")}
               className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === "integrations"
@@ -2153,7 +2338,7 @@ export default function App() {
               }`}
             >
               <Database className="w-4 h-4 text-emerald-500" />
-              <span>৪. 🔌 গিটহাব, সুপাবেস ও ভার্সেল</span>
+              <span>৬. 🔌 ক্লাউড ও হোস্টিং প্যানেল</span>
               <span className="text-[9px] bg-emerald-100 text-emerald-700 font-extrabold px-1.5 py-0.2 rounded animate-pulse">
                 যুক্ত করুন
               </span>
@@ -2166,7 +2351,7 @@ export default function App() {
               <div className="no-print w-full max-w-[21cm] mb-4 bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-indigo-50 text-indigo-700 rounded-lg flex items-center justify-center shrink-0 border border-indigo-200">
-                    <Award className="w-5 h-5 text-amber-500 animate-spin" />
+                    <AwardLucide className="w-5 h-5 text-amber-500 animate-spin" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -2345,6 +2530,10 @@ export default function App() {
                   ? "নিচের প্রশংসাপত্রটি A4 সাইজ কাগজে মেডেলসহ রঙিন প্রিন্ট দেওয়ার জন্য প্রস্তুত।"
                   : activeTab === "summary"
                   ? "নিচের প্রগতি প্রতিবেদন ও পরিসংখ্যানটি ১ পৃষ্ঠায় নিখুঁতভাবে প্রিন্ট করার জন্য পরিমিত করা হয়েছে।"
+                  : activeTab === "event"
+                  ? "নিচের অভিভাবক সভার পূর্ণাঙ্গ ইভেন্ট প্ল্যানটি ১ পৃষ্ঠায় (A4) দৃষ্টিনন্দনভাবে প্রিন্ট দেওয়ার জন্য প্রস্তুত করা হয়েছে।"
+                  : activeTab === "slides"
+                  ? "নিচের ৯টি প্রেজেন্টেশন স্লাইড হ্যান্ডআউট ১ পৃষ্ঠায় (A4) রঙিন ও আকর্ষণীয়ভাবে প্রিন্ট দেওয়ার জন্য প্রস্তুত।"
                   : "গিটহাব, সুপাবেস ও ভার্সেল ক্লাউড ড্যাশবোর্ড ও ডেভেলপার প্যানেল।"
                 }
               </span>
@@ -2369,65 +2558,72 @@ export default function App() {
           
           {/* TAB 1: PORTRAIT STUDY ROUTINE GRID */}
           {activeTab === "routine" && (
-            <div 
-              className="print-area w-full max-w-[21cm] bg-white text-black p-5 md:p-8 flex flex-col justify-between border border-black shadow-[0_0_15px_rgba(0,0,0,0.08)] relative"
-              style={{ 
-                fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
-                minHeight: '28.0cm' 
-              }}
-              id="routine-a4-sheet"
-            >
+            <div className="flex flex-col gap-6 items-center w-full">
+              <div 
+                className="print-area w-full max-w-[21cm] bg-white text-black p-5 md:p-8 flex flex-col justify-between border border-black shadow-[0_0_15px_rgba(0,0,0,0.08)] relative"
+                style={{ 
+                  fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
+                  minHeight: '28.2cm',
+                  ['--dynamic-row-height' as any]: `${(630 / daysCount).toFixed(1)}px`
+                }}
+                id="routine-a4-sheet"
+              >
               {/* Dynamic printable content */}
               <div>
                 
                 {/* Top border decor for "Professional Polish" */}
-                {themeMode === "professional-polish" && (
-                  <div className="w-full h-1.5 bg-black mb-4 no-print" />
-                )}
+                  {/* Dynamic decorative top bar to make the printed sheet look spectacular and friendly */}
+                  {themeMode === "professional-polish" && (
+                    <div className="w-full h-2.5 bg-gradient-to-r from-sky-400 via-emerald-400 via-indigo-500 via-purple-400 to-amber-400 rounded-t-lg -mt-5 -mx-5 mb-4 sm:-mt-8 sm:-mx-8 print:-mt-5 print:-mx-5 print:mb-3" />
+                  )}
+
+                  {themeMode === "professional-polish" && (
+                    <div className="w-full h-1.5 bg-indigo-600 mb-4 no-print" />
+                  )}
 
                 {/* Printable Header Section */}
-                <div className={`border-b-2 border-black pb-4 mb-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-end ${sizes.gapSize}`}>
+                <div className={`border-b-2 ${themeMode === "professional-polish" ? "border-indigo-100 pb-3" : "border-black pb-4"} mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-end ${sizes.gapSize}`}>
                   <div>
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <h1 className="text-xl sm:text-2xl font-black text-black border-l-4 border-black pl-3 tracking-tight">
+                      <h1 className={`text-xl sm:text-2xl font-black border-l-4 pl-3 tracking-tight ${themeMode === "professional-polish" ? "text-indigo-950 border-indigo-500" : "text-black border-black"}`}>
                         ডি-লিকন মডেল একাডেমীর  ছাত্র-ছাত্রীদের শিষ্টাচার, আমলনামা ও পড়ার রুটিন
                       </h1>
-                      <span className="inline-flex items-center gap-1.5 bg-yellow-100/90 text-yellow-950 border-2 border-yellow-500 rounded-full px-3 py-1 text-[11px] sm:text-xs font-serif italic font-black shadow-sm select-none tracking-wider uppercase rotate-[-1.5deg] hover:rotate-0 transition duration-150">
+                      <span className={`inline-flex items-center gap-1.5 border-2 rounded-full px-3 py-1 text-[11px] sm:text-xs font-serif italic font-black shadow-xs select-none tracking-wider uppercase rotate-[-1.5deg] hover:rotate-0 transition duration-150 ${themeMode === "professional-polish" ? "bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-955 border-amber-400" : "bg-yellow-100/90 text-yellow-950 border-yellow-500"}`}>
                         ✨ "Manner is Banner"
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[9px] uppercase tracking-widest text-gray-500 font-bold font-mono">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-extrabold font-mono">
                         Student Morals & Daily Study Routine Grid
                       </span>
-                      <span className="text-[9px] inline-block font-extrabold border border-black px-1.5 py-0.2 rounded bg-neutral-100">
+                      <span className={`text-[9px] inline-block font-extrabold border px-2 py-0.5 rounded-full ${themeMode === "professional-polish" ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-neutral-100 border-black"}`}>
                         সংশোধন ও শুদ্ধাচার মিশন
                       </span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-semibold sm:w-auto w-full">
+                  <div className={`grid grid-cols-2 gap-x-3 gap-y-1 text-xs font-semibold sm:w-auto w-full ${themeMode === "professional-polish" ? "bg-slate-50/50 p-2 rounded-lg border border-slate-100/80" : ""}`}>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-gray-800 whitespace-nowrap">নাম:</span>
-                      <div className="border-b border-gray-400 flex-1 min-w-[110px] font-bold text-black italic pb-0.5 px-1 bg-gray-50/50">
+                      <span className={`font-bold whitespace-nowrap ${themeMode === "professional-polish" ? "text-slate-600 text-[11px]" : "text-gray-800"}`}>নাম:</span>
+                      <div className={`flex-1 min-w-[110px] pb-0.5 px-1.5 font-bold text-black italic ${themeMode === "professional-polish" ? "border-b border-sky-400 bg-sky-50/50 rounded-t" : "border-b border-gray-400 bg-gray-50/50"}`}>
                         {studentName || "...................................."}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-gray-800 whitespace-nowrap">শ্রেণি:</span>
-                      <div className="border-b border-gray-400 flex-1 min-w-[65px] font-bold text-black italic pb-0.5 px-1 bg-gray-50/50 text-center font-bold">
+                      <span className={`font-bold whitespace-nowrap ${themeMode === "professional-polish" ? "text-slate-600 text-[11px]" : "text-gray-800"}`}>শ্রেণি:</span>
+                      <div className={`flex-1 min-w-[65px] font-bold text-black italic pb-0.5 px-1.5 text-center ${themeMode === "professional-polish" ? "border-b border-emerald-400 bg-emerald-50/50 rounded-t" : "border-b border-gray-400 bg-gray-50/50"}`}>
                         {studentClass || "............"}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-gray-800 whitespace-nowrap">রোল:</span>
-                      <div className="border-b border-gray-400 flex-1 min-w-[65px] font-bold text-black italic pb-0.5 px-1 bg-gray-50/50 text-center font-mono">
+                      <span className={`font-bold whitespace-nowrap ${themeMode === "professional-polish" ? "text-slate-600 text-[11px]" : "text-gray-800"}`}>রোল:</span>
+                      <div className={`flex-1 min-w-[65px] font-bold text-black italic pb-0.5 px-1.5 text-center font-mono ${themeMode === "professional-polish" ? "border-b border-purple-400 bg-purple-50/50 rounded-t" : "border-b border-gray-400 bg-gray-50/50"}`}>
                         {toBnNum(studentRoll) || "............"}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-gray-800 whitespace-nowrap">মাস:</span>
-                      <div className="border-b border-gray-400 flex-1 min-w-[110px] font-black text-indigo-900 pb-0.5 px-1 bg-neutral-100/70 text-center">
+                      <span className={`font-bold whitespace-nowrap ${themeMode === "professional-polish" ? "text-slate-600 text-[11px]" : "text-gray-800"}`}>মাস:</span>
+                      <div className={`flex-1 min-w-[110px] font-black pb-0.5 px-1.5 text-center ${themeMode === "professional-polish" ? "border-b border-indigo-400 bg-indigo-50/70 text-indigo-950 rounded-t" : "border-b border-gray-400 bg-neutral-100/70 text-indigo-900"}`}>
                         {selectedMonth || "...................."}
                       </div>
                     </div>
@@ -2435,25 +2631,33 @@ export default function App() {
                 </div>
 
                 {/* Print Version Progress Scoreboard block */}
-                <div className="flex justify-between items-center mb-3.5 bg-neutral-50 px-3 py-1.5 border border-neutral-300 rounded text-[11px] font-semibold">
+                <div className={`flex justify-between items-center mb-3 px-3.5 py-1.5 border text-[11px] font-semibold rounded-xl ${
+                  themeMode === "professional-polish"
+                    ? "bg-gradient-to-r from-indigo-50/80 via-white to-amber-50/50 border-indigo-100/70 shadow-xs"
+                    : "bg-neutral-50 border-neutral-300 rounded"
+                }`}>
                   <div className="flex items-center gap-4">
                     <div>
-                      <span className="text-gray-500 font-bold uppercase text-[8.5px] block">সর্বমোট রুটিন লক্ষ্য</span>
-                      <span className="font-bold text-black text-xs">
-                        {toBnNum(daysCount)} দিনে মোট {toBnNum(maxPossiblePoints)} টি সৎ অভ্যাস লক্ষ্য
+                      <span className={`font-black uppercase text-[8.5px] block ${themeMode === "professional-polish" ? "text-slate-500" : "text-gray-500"}`}>🎯 সর্বমোট রুটিন লক্ষ্য</span>
+                      <span className="font-extrabold text-black text-xs mt-0.5 block">
+                        {toBnNum(daysCount)} দিনে মোট <span className="text-indigo-900 font-black">{toBnNum(maxPossiblePoints)}</span> টি সৎ অভ্যাস লক্ষ্য
                       </span>
                     </div>
-                    <div className="w-[1px] h-6 bg-neutral-300" />
+                    <div className={`w-[1.5px] h-7 ${themeMode === "professional-polish" ? "bg-indigo-100" : "bg-neutral-300"}`} />
                     <div>
-                      <span className="text-gray-500 font-bold uppercase text-[8.5px] block">ডিজিটাল প্রগ্রেস অর্জন</span>
-                      <span className="font-bold text-black text-xs font-mono bg-indigo-50 px-1 py-0.2 rounded border border-indigo-200">
+                      <span className={`font-black uppercase text-[8.5px] block ${themeMode === "professional-polish" ? "text-slate-500" : "text-gray-500"}`}>🏆 ডিজিটাল প্রগ্রেস অর্জন</span>
+                      <span className={`font-black text-xs mt-0.5 block font-mono px-2 py-0.5 rounded-full border ${
+                        themeMode === "professional-polish" 
+                          ? "bg-emerald-500 text-white border-emerald-600 shadow-xs shadow-emerald-100" 
+                          : "bg-indigo-50 text-black border-indigo-200"
+                      }`}>
                         {toBnNum(totalEarnedPoints)} টি সফল টিক্স ({toBnNum(earnedPercentage)}%)
                       </span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-gray-400 text-[8.5px] block">পর্যালোচনা ও তদারকি</span>
-                    <p className="text-black text-[10px] font-bold">অভিভাবক ও বিদ্যালয়ের নিয়মিত মূল্যায়ন</p>
+                    <span className={`font-black uppercase text-[8.5px] block ${themeMode === "professional-polish" ? "text-indigo-500" : "text-gray-400"}`}>🔍 পর্যালোচনা ও তদারকি</span>
+                    <p className="text-slate-950 text-[10px] font-black mt-0.5">অভিভাবক ও বিদ্যালয়ের নিয়মিত মূল্যায়ন</p>
                   </div>
                 </div>
 
@@ -2462,15 +2666,15 @@ export default function App() {
                   <table className="w-full border-collapse border border-black text-center">
                     <thead>
                       <tr className="bg-neutral-100 h-9 text-[10px] font-extrabold text-black">
-                        <th className="border border-black w-[8%] font-black py-1 px-0.5">তারিখ ও বার</th>
-                        <th className="border border-black w-[15%] font-black py-1 px-0.5 leading-tight">{col2Header}</th>
-                        <th className="border border-black w-[13%] font-black py-1 px-0.5 leading-tight">{col1Header}</th>
-                        <th className="border border-black w-[13%] font-black py-1 px-0.5 leading-tight">{col3Header}</th>
-                        <th className="border border-black w-[13%] font-black py-1 px-0.5 leading-tight">{col4Header}</th>
-                        <th className="border border-black w-[13%] font-black py-1 px-0.5 leading-tight">{col5Header}</th>
-                        <th className="border border-black w-[13%] font-black py-1 px-0.5 leading-tight">{col6Header}</th>
-                        <th className="border border-black w-[8%] font-black py-1 px-0.5">স্বাক্ষর / অভিভাবক</th>
-                        <th className="border border-black w-[4%] font-black py-1 px-0.5">দৈনিক স্কোর</th>
+                        <th className={`border border-black w-[8%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-slate-100 text-slate-950 text-[10.5px] border-slate-400" : ""}`}>তারিখ ও বার</th>
+                        <th className={`border border-black w-[15%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-emerald-50 text-emerald-950 text-[10.5px] border-slate-400" : ""}`}>{col2Header}</th>
+                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-sky-50 text-sky-950 text-[10.5px] border-slate-400" : ""}`}>{col1Header}</th>
+                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-teal-50 text-teal-950 text-[10.5px] border-slate-400" : ""}`}>{col3Header}</th>
+                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-violet-50 text-violet-955 text-[10.5px] border-slate-400" : ""}`}>{col4Header}</th>
+                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-amber-50/90 text-amber-955 text-[10.5px] border-slate-400" : ""}`}>{col5Header}</th>
+                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-indigo-50/90 text-indigo-955 text-[10.5px] border-slate-400" : ""}`}>{col6Header}</th>
+                        <th className={`border border-black w-[8%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-rose-50 text-rose-950 text-[10.5px] border-slate-400" : ""}`}>স্বাক্ষর / অভিভাবক</th>
+                        <th className={`border border-black w-[4%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-yellow-50 text-yellow-955 text-[10.5px] border-slate-400 font-extrabold" : ""}`}>দৈনিক স্কোর</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2505,19 +2709,19 @@ export default function App() {
 
                         return (
                           <Fragment key={row.date}>
-                            <tr className={isFriday ? "bg-red-50/45 text-red-950 font-bold" : "bg-white"}>
+                            <tr className={isFriday ? "bg-red-50/40 text-red-955 font-bold" : (themeMode === "professional-polish" ? "hover:bg-slate-50/30 transition-colors" : "bg-white")}>
                               {/* 1. Date & Day Name */}
-                              <td className={`border border-black font-extrabold text-black ${sizes.cellPadding} ${sizes.fontSize} select-none`}>
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-slate-50/30" : "border-black"} font-extrabold text-black ${sizes.cellPadding} ${sizes.fontSize} select-none`}>
                                 <div className="flex flex-col items-center justify-center leading-none">
                                   <span className="font-black text-[13px]">{toBnNum(row.date)}</span>
-                                  <span className={`text-[9.2px] font-black mt-0.5 ${isFriday ? "text-red-700 font-bold" : "text-gray-600"}`}>
+                                  <span className={`text-[9.2px] font-black mt-0.5 ${isFriday ? "text-red-700 font-bold" : (themeMode === "professional-polish" ? "text-slate-500" : "text-gray-600")}`}>
                                     ({wkday.short})
                                   </span>
                                 </div>
                               </td>
 
                               {/* ৫ ওয়াক্ত নামাজ (ফজর, যোহর, আসর, মাগরিব, এশা) */}
-                              <td className="border border-black p-0.5 relative bg-white select-none">
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-emerald-50/5" : "border-black"} p-0.5 relative bg-white select-none`}>
                                 <div className="flex items-center justify-center gap-0.5 sm:gap-1 min-h-[44px] print:min-h-0 print:gap-[3px] print:py-1">
                                   {[
                                     { key: "fajrChecked", label: "ফ", fullName: "ফজর" },
@@ -2533,7 +2737,7 @@ export default function App() {
                                         type="button"
                                         onClick={() => togglePrayer(row.date, p.key as any)}
                                         className={`
-                                          w-5 h-5 sm:w-6 sm:h-6 rounded-full flex flex-col items-center justify-center border text-[9px] sm:text-[10px] font-extrabold transition-all duration-150 cursor-pointer select-none relative group/pr focus:outline-none focus:ring-1 focus:ring-emerald-400
+                                          prayer-btn w-5 h-5 sm:w-6 sm:h-6 rounded-full flex flex-col items-center justify-center border text-[9px] sm:text-[10px] font-extrabold transition-all duration-150 cursor-pointer select-none relative group/pr focus:outline-none focus:ring-1 focus:ring-emerald-400
                                           print:w-[19px] print:h-[19px] print:rounded-full print:border-[1.5px] print:shadow-none print:m-0 print:p-0 print:flex print:items-center print:justify-center
                                           ${isChecked 
                                             ? "bg-emerald-600 text-white border-emerald-600 shadow-sm font-black scale-105 print:bg-emerald-600 print:border-emerald-700 print:text-white" 
@@ -2565,30 +2769,30 @@ export default function App() {
                               </td>
 
                               {/* 2. Checkbox 1 */}
-                              <td className="border border-black relative p-0.5">
-                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] gap-0.5">
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-sky-50/5" : "border-black"} relative p-0.5`}>
+                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] print:min-h-0 gap-0.5 print:gap-0">
                                   <button
                                     type="button"
                                     onClick={() => toggleCell(row.date, "col1Checked")}
                                     className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 transition focus:outline-none cursor-pointer"
                                   >
                                     {row.col1Checked ? (
-                                      <span className="text-emerald-600 text-sm font-extrabold">✔</span>
+                                      <span className={`font-extrabold text-sm ${themeMode === "professional-polish" ? "text-sky-600 print:text-sky-600 font-black text-base" : "text-emerald-600"}`}>✔</span>
                                     ) : (
-                                      <span className="text-slate-350 hover:text-slate-800 text-sm">☐</span>
+                                      <span className={`text-sm ${themeMode === "professional-polish" ? "text-slate-300 hover:text-sky-600 text-[13px] print:text-slate-300" : "text-slate-350"}`}>☐</span>
                                     )}
                                   </button>
                                   <input
                                     type="text"
                                     value={row.col1Val || ""}
                                     onChange={(e) => updateCellValue(row.date, "col1Val", e.target.value)}
-                                    placeholder={row.col1Checked ? "" : "..."}
+                                    placeholder={row.col1Checked ? "" : "......"}
                                     disabled={row.col1Checked}
                                     className={`w-full text-center bg-transparent border-none text-[9.5px] p-0 focus:outline-none placeholder:text-slate-350 leading-none ${
                                       row.col1Checked 
-                                        ? "text-slate-400 line-through select-none" 
+                                        ? "text-slate-400 line-through select-none print:hidden" 
                                         : "text-indigo-900 font-bold focus:border-b focus:border-indigo-500 font-mono"
-                                    }`}
+                                    } ${!row.col1Val ? "print:hidden" : ""}`}
                                     title="বাস্তব সময় বা বিচ্যুতি লিখুন (যদি শর্ত পূরণ না হয়)"
                                   />
                                 </div>
@@ -2596,17 +2800,17 @@ export default function App() {
                               </td>
 
                               {/* 4. Checkbox 3 */}
-                              <td className="border border-black relative p-0.5">
-                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] gap-0.5">
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-teal-50/5" : "border-black"} relative p-0.5`}>
+                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] print:min-h-0 gap-0.5 print:gap-0">
                                   <button
                                     type="button"
                                     onClick={() => toggleCell(row.date, "col3Checked")}
                                     className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 transition focus:outline-none cursor-pointer"
                                   >
                                     {row.col3Checked ? (
-                                      <span className="text-emerald-600 text-sm font-extrabold">✔</span>
+                                      <span className={`font-extrabold text-sm ${themeMode === "professional-polish" ? "text-teal-600 print:text-teal-600 font-black text-base" : "text-emerald-600"}`}>✔</span>
                                     ) : (
-                                      <span className="text-slate-350 hover:text-slate-800 text-sm">☐</span>
+                                      <span className={`text-sm ${themeMode === "professional-polish" ? "text-slate-300 hover:text-teal-600 text-[13px] print:text-slate-300" : "text-slate-350"}`}>☐</span>
                                     )}
                                   </button>
                                   
@@ -2615,13 +2819,13 @@ export default function App() {
                                     type="text"
                                     value={row.col3Val || ""}
                                     onChange={(e) => updateCellValue(row.date, "col3Val", e.target.value)}
-                                    placeholder={row.col3Checked ? "" : "..."}
+                                    placeholder={row.col3Checked ? "" : "......"}
                                     disabled={row.col3Checked}
                                     className={`w-full text-center bg-transparent border-none text-[9.5px] p-0 focus:outline-none placeholder:text-slate-350 leading-none ${
                                       row.col3Checked 
-                                        ? "text-slate-400 line-through select-none" 
+                                        ? "text-slate-400 line-through select-none print:hidden" 
                                         : "text-indigo-900 font-bold focus:border-b focus:border-indigo-500 font-mono"
-                                    }`}
+                                    } ${!row.col3Val ? "print:hidden" : ""}`}
                                     title="বাস্তব সময় বা বিচ্যুতি লিখুন (যদি শর্ত পূরণ না হয়)"
                                   />
                                 </div>
@@ -2629,30 +2833,30 @@ export default function App() {
                               </td>
 
                               {/* 5. Checkbox 4 */}
-                              <td className="border border-black relative p-0.5">
-                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] gap-0.5">
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-violet-50/5" : "border-black"} relative p-0.5`}>
+                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] print:min-h-0 gap-0.5 print:gap-0">
                                   <button
                                     type="button"
                                     onClick={() => toggleCell(row.date, "col4Checked")}
                                     className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 transition focus:outline-none cursor-pointer"
                                   >
                                     {row.col4Checked ? (
-                                      <span className="text-emerald-600 text-sm font-extrabold">✔</span>
+                                      <span className={`font-extrabold text-sm ${themeMode === "professional-polish" ? "text-violet-600 print:text-violet-600 font-black text-base" : "text-emerald-600"}`}>✔</span>
                                     ) : (
-                                      <span className="text-slate-350 hover:text-slate-800 text-sm">☐</span>
+                                      <span className={`text-sm ${themeMode === "professional-polish" ? "text-slate-300 hover:text-violet-600 text-[13px] print:text-slate-300" : "text-slate-350"}`}>☐</span>
                                     )}
                                   </button>
                                   <input
                                     type="text"
                                     value={row.col4Val || ""}
                                     onChange={(e) => updateCellValue(row.date, "col4Val", e.target.value)}
-                                    placeholder={row.col4Checked ? "" : "..."}
+                                    placeholder={row.col4Checked ? "" : "......"}
                                     disabled={row.col4Checked}
                                     className={`w-full text-center bg-transparent border-none text-[9.5px] p-0 focus:outline-none placeholder:text-slate-350 leading-none ${
                                       row.col4Checked 
-                                        ? "text-slate-400 line-through select-none" 
+                                        ? "text-slate-400 line-through select-none print:hidden" 
                                         : "text-indigo-900 font-bold focus:border-b focus:border-indigo-500 font-mono"
-                                    }`}
+                                    } ${!row.col4Val ? "print:hidden" : ""}`}
                                     title="বাস্তব সময় বা বিচ্যুতি লিখুন (যদি শর্ত পূরণ না হয়)"
                                   />
                                 </div>
@@ -2660,30 +2864,30 @@ export default function App() {
                               </td>
 
                               {/* 6. Checkbox 5 (from col5Header) */}
-                              <td className="border border-black relative p-0.5">
-                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] gap-0.5">
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-amber-50/5" : "border-black"} relative p-0.5`}>
+                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] print:min-h-0 gap-0.5 print:gap-0">
                                   <button
                                     type="button"
                                     onClick={() => toggleCell(row.date, "col5Checked")}
                                     className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 transition focus:outline-none cursor-pointer"
                                   >
                                     {row.col5Checked ? (
-                                      <span className="text-emerald-600 text-sm font-extrabold">✔</span>
+                                      <span className={`font-extrabold text-sm ${themeMode === "professional-polish" ? "text-amber-500 print:text-amber-500 font-black text-base" : "text-emerald-600"}`}>✔</span>
                                     ) : (
-                                      <span className="text-slate-350 hover:text-slate-800 text-sm">☐</span>
+                                      <span className={`text-sm ${themeMode === "professional-polish" ? "text-slate-300 hover:text-amber-600 text-[13px] print:text-slate-300" : "text-slate-350"}`}>☐</span>
                                     )}
                                   </button>
                                   <input
                                     type="text"
                                     value={row.col5Val || ""}
                                     onChange={(e) => updateCellValue(row.date, "col5Val", e.target.value)}
-                                    placeholder={row.col5Checked ? "" : "..."}
+                                    placeholder={row.col5Checked ? "" : "......"}
                                     disabled={row.col5Checked}
                                     className={`w-full text-center bg-transparent border-none text-[9.5px] p-0 focus:outline-none placeholder:text-slate-350 leading-none ${
                                       row.col5Checked 
-                                        ? "text-slate-400 line-through select-none" 
+                                        ? "text-slate-400 line-through select-none print:hidden" 
                                         : "text-indigo-900 font-bold focus:border-b focus:border-indigo-500 font-mono"
-                                    }`}
+                                    } ${!row.col5Val ? "print:hidden" : ""}`}
                                     title="বাস্তব সময় বা বিচ্যুতি লিখুন (যদি শর্ত পূরণ না হয়)"
                                   />
                                 </div>
@@ -2691,30 +2895,30 @@ export default function App() {
                               </td>
 
                               {/* 7. Checkbox 6 (from col6Header) */}
-                              <td className="border border-black relative p-0.5">
-                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] gap-0.5">
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-indigo-50/5" : "border-black"} relative p-0.5`}>
+                                <div className="flex flex-col items-center justify-center h-full w-full min-h-[44px] print:min-h-0 gap-0.5 print:gap-0">
                                   <button
                                     type="button"
                                     onClick={() => toggleCell(row.date, "col6Checked")}
                                     className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 transition focus:outline-none cursor-pointer"
                                   >
                                     {row.col6Checked ? (
-                                      <span className="text-emerald-600 text-sm font-extrabold">✔</span>
+                                      <span className={`font-extrabold text-sm ${themeMode === "professional-polish" ? "text-indigo-600 print:text-indigo-600 font-black text-base" : "text-emerald-600"}`}>✔</span>
                                     ) : (
-                                      <span className="text-slate-350 hover:text-slate-800 text-sm">☐</span>
+                                      <span className={`text-sm ${themeMode === "professional-polish" ? "text-slate-300 hover:text-indigo-600 text-[13px] print:text-slate-300" : "text-slate-350"}`}>☐</span>
                                     )}
                                   </button>
                                   <input
                                     type="text"
                                     value={row.col6Val || ""}
                                     onChange={(e) => updateCellValue(row.date, "col6Val", e.target.value)}
-                                    placeholder={row.col6Checked ? "" : "..."}
+                                    placeholder={row.col6Checked ? "" : "......"}
                                     disabled={row.col6Checked}
                                     className={`w-full text-center bg-transparent border-none text-[9.5px] p-0 focus:outline-none placeholder:text-slate-350 leading-none ${
                                       row.col6Checked 
-                                        ? "text-slate-400 line-through select-none" 
+                                        ? "text-slate-400 line-through select-none print:hidden" 
                                         : "text-indigo-900 font-bold focus:border-b focus:border-indigo-500 font-mono"
-                                    }`}
+                                    } ${!row.col6Val ? "print:hidden" : ""}`}
                                     title="বাস্তব সময় বা বিচ্যুতি লিখুন (যদি শর্ত পূরণ না হয়)"
                                   />
                                 </div>
@@ -2722,18 +2926,18 @@ export default function App() {
                               </td>
 
                               {/* 8. Signature area for physical pen ticks */}
-                              <td className="border border-black text-center"></td>
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-rose-50/5" : "border-black"} text-center`}></td>
 
                               {/* 9. Daily Score and Goal Toggle Button */}
-                              <td className="border border-black text-center p-0.5 relative bg-indigo-50/10">
+                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-yellow-50/10" : "border-black"} text-center p-0.5 relative bg-indigo-50/10`}>
                                 <button
                                   type="button"
                                   onClick={() => toggleRowExpand(row.date)}
-                                  className="w-full min-h-[40px] flex items-center justify-center gap-1 rounded hover:bg-slate-100/60 transition focus:outline-none cursor-pointer"
+                                  className="w-full min-h-[40px] print:min-h-0 print:py-0.5 flex items-center justify-center gap-1 rounded hover:bg-slate-100/60 transition focus:outline-none cursor-pointer"
                                   title="দৈনিক লক্ষ্য ও প্রতিফলন"
                                 >
                                   <div className="flex items-center gap-1 justify-center">
-                                    <span className="font-mono font-extrabold text-[12.5px] text-indigo-950 leading-none">
+                                    <span className={`font-mono font-black text-[12.5px] leading-none ${themeMode === "professional-polish" ? "text-amber-800" : "text-indigo-950"}`}>
                                       {toBnNum(rowScore)}
                                     </span>
                                     <Sparkles className={`w-3.5 h-3.5 transition-all duration-200 no-print ${
@@ -2968,6 +3172,200 @@ export default function App() {
                       </span>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+
+              {/* Page separator on-screen only */}
+              <div className="no-print w-full max-w-[21cm] border-t-2 border-dashed border-indigo-250 my-4 flex items-center justify-center relative">
+                <span className="bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-black border border-indigo-200 shadow-sm">
+                  পৃষ্ঠা ২: অভিভাবকদের প্রতি বিশেষ নির্দেশনা ও অঙ্গীকার পত্র (প্রিন্ট কপিতে এটি ২য় পেজ হবে)
+                </span>
+              </div>
+
+              {/* PAGE 2: Parents' Guidelines A4 Sheet */}
+              <div 
+                className="print-area page-break w-full max-w-[21cm] bg-white text-black p-6 md:p-10 flex flex-col justify-between border-4 border-indigo-600/30 rounded-2xl shadow-[0_0_15px_rgba(0,0,0,0.08)] relative mt-4 print:mt-0 print:border-none print:shadow-none print:rounded-none"
+                style={{ 
+                  fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
+                  minHeight: '28.2cm' 
+                }}
+                id="parent-guidelines-a4-sheet"
+              >
+                <div>
+                  {/* Decorative Header */}
+                  <div className="border-b-2 border-indigo-600 pb-3 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h1 className="text-xl sm:text-2xl font-black text-indigo-950 tracking-tight">
+                          ডি-লিকন মডেল একাডেমী
+                        </h1>
+                        <span className="bg-indigo-100 text-indigo-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-indigo-200">
+                          সংশোধন ও শুদ্ধাচার মিশন
+                        </span>
+                      </div>
+                      <p className="text-xs font-black text-indigo-600 uppercase tracking-wider mt-1">
+                        ★ অভিভাবকদের প্রতি বিশেষ নির্দেশনা ও নৈতিক অঙ্গীকার পত্র ★
+                      </p>
+                    </div>
+                    <div className="text-right sm:w-auto w-full text-xs font-bold text-slate-500 font-mono">
+                      DE-LICON MODEL ACADEMY • PARENTS' MORALS MISSION
+                    </div>
+                  </div>
+
+                  {/* Intro Message */}
+                  <div className="bg-indigo-50/40 border-l-4 border-indigo-500 p-3.5 rounded-r-lg mb-3 text-xs sm:text-[13px] leading-relaxed font-semibold text-indigo-950">
+                    প্রিয় অভিভাবক, আপনার সন্তানের চমৎকার ভবিষ্যৎ, নৈতিক ও আত্মিক মূল্যবোধ গঠন এবং দৈনিক পড়ালেখায় কাঙ্ক্ষিত অগ্রগতির জন্য বিদ্যালয় ও পরিবারের সমন্বিত প্রচেষ্টা এবং নিয়মিত তদারকি অত্যন্ত আবশ্যক। রুটিনের সাথে এই নির্দেশনাগুলো নিয়মিত মেনে চলার অনুরোধ রইলো:
+                  </div>
+
+                  {/* Aesthetic Quote Block */}
+                  <div className="bg-amber-50/60 border border-amber-200/80 p-2.5 px-4 rounded-xl mb-3 text-center select-none flex items-center justify-center gap-2">
+                    <span className="text-amber-500 text-xl font-serif leading-none shrink-0">“</span>
+                    <p className="text-[11.5px] sm:text-[12px] font-bold text-amber-900 leading-relaxed italic">
+                      মনে রাখবেন, একটি পাখির ওড়ার জন্য যেমন দুটি ডানার প্রয়োজন, একটি শিশুর পূর্ণাঙ্গ বিকাশের জন্য তেমনি বিদ্যালয় ও পরিবার—উভয়ের সমান ভূমিকা প্রয়োজন। বিদ্যালয়ে আমরা যা শেখাই, তার চর্চা বাড়িতে না হলে সব পরিশ্রমই বৃথা যায়।
+                    </p>
+                    <span className="text-amber-500 text-xl font-serif leading-none shrink-0">”</span>
+                  </div>
+
+                  {/* Guidelines Cards Grid (5 Cards) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 guidelines-grid">
+                    {[
+                      {
+                        id: "১",
+                        title: "বাদ মাগরিব পড়ার সোনালী সময় তদারকি",
+                        desc: "প্রতিদিন বাদ মাগরিব থেকে রাত ৯টা পর্যন্ত সন্তানের পড়ালেখার স্বর্ণালী সময়। এই সময়ে বাড়িতে মোবাইল, কার্টুন, টেলিভিশন বা অন্যান্য বিনোদন কঠোরভাবে বন্ধ রাখুন এবং পড়ার টেবিলে সন্তানের উপস্থিতি ও মনোনিবেশ নিশ্চিত করুন।"
+                      },
+                      {
+                        id: "২",
+                        title: "সময়ানুবর্তিতা ও প্রাতঃকালীন স্ব-স্কুলিং",
+                        desc: "খুব ভোরে ঘুম থেকে উঠার স্বাস্থ্যকর অভ্যাস গড়ে তুলুন। সন্তান যেন ভোরে উঠে কমপক্ষে ২ ঘণ্টা শান্ত মাথায় বিদ্যালয়ের পড়া রিভিশন দিতে পারে এবং প্রতিদিন যথাসময়ে সুশৃঙ্খলভাবে পোশাকে সজ্জিত হয়ে ক্লাসে উপস্থিত হতে পারে।"
+                      },
+                      {
+                        id: "৩",
+                        title: "শিষ্টাচার, সালাম ও আচরণগত উৎকর্ষতা",
+                        desc: "সন্তানকে বড়দের সালাম দেওয়ার অভ্যাস গড়ে তুলতে সাহায্য করুন। বাড়িতে সকলের সাথে মিষ্টি আচরণ বজায় রাখা এবং মিথ্যা না বলার সৎ সাহস তার মনে বপন করুন। বিদ্যালয়ের 'Manner is Banner' মূলমন্ত্রকে ঘরেও জীবিত রাখুন।"
+                      },
+                      {
+                        id: "৪",
+                        title: "ইতিবাচক অভিভাবকত্ব (Positive Parenting)",
+                        desc: "বাচ্চাদের প্রতি অহেতুক শারীরিক বা মানসিক শাস্তি না দিয়ে স্নেহ ও ধৈর্যের সাথে ভুলগুলো সংশোধন করে দিন। তার প্রতিটি ভালো অর্জন, রুটিন কমপ্লিশন ও সৎ অভ্যাসের জন্য সংগ্রহ ও প্রশংসা করুন।"
+                      },
+                      {
+                        id: "৫",
+                        title: "দৈনিক মূল্যায়ন পর্যবেক্ষণ ও সাপ্তাহিক স্বাক্ষর",
+                        desc: "সন্তানের দৈনিক ডায়েরি ও রুটিন চার্টটি নিয়মিত লক্ষ্য করুন। কোন ঘরে বা কলামে ঘাটতি আছে তা নিজে দেখে টিক মারতে সহায়তা করুন এবং সপ্তাহের শেষে ডায়েরিতে আপনার মূল্যবান স্বাক্ষর প্রদান করতে ভুলবেন না।"
+                      }
+                    ].map((g, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`border border-slate-200/70 hover:border-indigo-200 p-2 rounded-xl bg-slate-50/10 hover:bg-indigo-50/5 transition duration-150 flex gap-2.5 items-start guideline-card shadow-xs ${
+                          idx === 4 ? "col-span-1 sm:col-span-2 guideline-card-span-2" : ""
+                        }`}
+                      >
+                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white font-extrabold text-[10px] shrink-0 mt-0.5 shadow-xs shadow-indigo-100">
+                          {g.id}
+                        </span>
+                        <div>
+                          <h3 className="font-black text-slate-900 text-[11.5px] sm:text-xs tracking-tight guideline-title flex items-center gap-1.5">
+                            <span>{g.title}</span>
+                          </h3>
+                          <p className="text-slate-700 text-[10px] sm:text-[10.5px] leading-normal mt-0.5 guideline-text font-semibold font-sans">
+                            {g.desc}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Moral & Integrity 4 Pillars Section */}
+                  <div className="border border-emerald-250 bg-emerald-50/30 p-2.5 rounded-xl mt-2.5 select-none pillars-section">
+                    <h3 className="font-black text-emerald-950 text-[11.5px] sm:text-xs flex items-center gap-1.5 tracking-tight mb-1.5">
+                      <span className="text-emerald-600 font-bold">🏆</span> লক্ষ্য: নৈতিকতা ও ৪টি শুদ্ধাচার (Morality & Integrity Pillars)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 pillars-grid">
+                      <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100 flex gap-2 items-start pillar-card">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white font-extrabold text-[9px] flex items-center justify-center shrink-0 mt-0.5 shadow-xs">১</span>
+                        <div>
+                          <h4 className="text-[11px] font-black text-slate-950 pillar-title">শিষ্টাচার</h4>
+                          <p className="text-[9.5px] text-slate-700 leading-normal font-bold pillar-desc">বড়দের সালাম/সম্মান দেওয়া এবং মার্জিত ভাষায় কথা বলা।</p>
+                        </div>
+                      </div>
+                      <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100 flex gap-2 items-start pillar-card">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white font-extrabold text-[9px] flex items-center justify-center shrink-0 mt-0.5 shadow-xs">২</span>
+                        <div>
+                          <h4 className="text-[11px] font-black text-slate-950 pillar-title">সত্যবাদিতা</h4>
+                          <p className="text-[9.5px] text-slate-700 leading-normal font-bold pillar-desc">যেকোনো পরিস্থিতিতে সত্য বলা এবং নিজের ভুল স্বীকার করা।</p>
+                        </div>
+                      </div>
+                      <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100 flex gap-2 items-start pillar-card">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white font-extrabold text-[9px] flex items-center justify-center shrink-0 mt-0.5 shadow-xs">৩</span>
+                        <div>
+                          <h4 className="text-[11px] font-black text-slate-950 pillar-title">শৃঙ্খল জীবন</h4>
+                          <p className="text-[9.5px] text-slate-700 leading-normal font-bold pillar-desc">নিজের পড়ার টেবিল, বিছানা ও পোশাক পরিপাটি রাখা।</p>
+                        </div>
+                      </div>
+                      <div className="bg-white/90 p-1.5 rounded-lg border border-emerald-100 flex gap-2 items-start pillar-card">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white font-extrabold text-[9px] flex items-center justify-center shrink-0 mt-0.5 shadow-xs">৪</span>
+                        <div>
+                          <h4 className="text-[11px] font-black text-slate-950 pillar-title">ডিজিটাল শুদ্ধাচার</h4>
+                          <p className="text-[9.5px] text-slate-700 leading-normal font-bold pillar-desc">প্রয়োজন ছাড়া মোবাইল ও ইন্টারনেটের অপব্যবহার থেকে দূরে থাকা।</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Parents' Pledge Card */}
+                  <div className="border border-amber-300/80 bg-gradient-to-r from-amber-50/30 via-white to-amber-50/15 p-2.5 rounded-xl shadow-xs border-dashed text-slate-900 mt-2.5 pledge-card">
+                    <h3 className="font-black text-amber-950 text-[11.5px] sm:text-xs flex items-center gap-1.5 tracking-tight pledge-title">
+                      <span>✨</span> সচেতন অভিভাবকের অঙ্গীকার পত্র (Parent's Pledge)
+                    </h3>
+                    <p className="text-[10px] sm:text-[11px] leading-relaxed text-slate-800 font-semibold mt-1 pledge-text">
+                      আমি <span className="border-b border-indigo-400 font-black text-indigo-950 px-4 inline-block bg-white/50">__________________________</span>, ডি-লিকন মডেল একাডেমীর একজন সচেতন অভিভাবক হিসেবে অঙ্গীকার করছি যে— আমার সন্তান {studentName ? <span className="font-black text-indigo-950 px-1 border-b border-slate-400">{studentName}</span> : <span className="px-5 border-b border-slate-400">_____________________</span>} (শ্রেণি: {studentClass || "............"}, রোল: {toBnNum(studentRoll) || "............"}) এর সৎ চরিত্র ও উজ্জ্বল ভবিষ্যৎ গঠনে আমি বাড়িতে পড়ালেখার নিয়মিত তদারকি করব, বাদ মাগরিব থেকে রাত ৯টা পর্যন্ত তার সাথে সময় দেব এবং তার আচরণগত শুদ্ধাচার গঠনে বিদ্যালয়ের সাথে সদাসর্বদা একাত্ম হয়ে কাজ করব।
+                    </p>
+                    <div className="mt-1.5 pt-1 border-t border-amber-200/50 text-center">
+                      <p className="text-[10px] sm:text-[11px] font-black text-emerald-800 leading-normal italic">
+                        "আসুন আমরা প্রতিজ্ঞা করি, আমরা কেবল একজন ভালো ছাত্র নয়, বরং একজন নীতিবান ও শুদ্ধাচারী সন্তান উপহার দেব এই সমাজকে।"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Print bottom footer & Signatures */}
+                <div>
+                  <div className="grid grid-cols-3 gap-8 mt-3.5 pt-3.5 border-t border-dashed border-gray-300 signature-area font-semibold text-xs text-center select-none">
+                    <div>
+                      <div className="border-b border-gray-300 w-full min-h-[40px] flex items-end justify-center mb-1 pb-1">
+                        {/* Space for physical signature */}
+                      </div>
+                      <span className="font-extrabold text-black block text-[11px] signature-label">সচেতন অভিভাবকের স্বাক্ষর</span>
+                      <span className="text-gray-400 text-[9.5px] leading-tight mt-0.5 block">ডি-লিকন মডেল একাডেমী অভিভাবক ফোরাম</span>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-end">
+                      {principalApproved ? (
+                        <div className="border border-emerald-300 bg-emerald-50/30 rounded-lg p-1.5 max-w-[150px] relative w-full mb-1">
+                          <span className="text-emerald-800 text-[9px] font-black uppercase tracking-wider block">অনুমোদিত ও সার্টিফাইড</span>
+                          <span className="font-bold text-black text-[10px] block border-b border-gray-200 mt-0.5 pb-0.5">{principalName || "প্রিন্সিপাল"}</span>
+                        </div>
+                      ) : (
+                        <div className="border-b border-gray-300 w-full min-h-[45px] flex items-end justify-center mb-1 pb-1"></div>
+                      )}
+                      <span className="font-extrabold text-indigo-950 block text-[11px] signature-label">প্রধান শিক্ষক / প্রিন্সিপাল</span>
+                    </div>
+
+                    <div>
+                      <div className="border-b border-gray-300 w-full min-h-[45px] flex items-end justify-center mb-1 pb-1">
+                        {/* Space for physical signature */}
+                      </div>
+                      <span className="font-extrabold text-black block text-[11px] signature-label">মেন্টর শিক্ষক / কো-অর্ডিনেটর</span>
+                      <span className="text-gray-400 text-[9.5px] leading-tight mt-0.5 block">সংশোধন ও শুদ্ধাচার মিশন</span>
+                    </div>
+                  </div>
+
+                  <footer className="text-center text-slate-400 text-[10px] mt-4 border-t border-slate-100 pt-3 select-none flex justify-between items-center w-full">
+                    <span>Manner is Banner • ডি-লিকন মডেল একাডেমী</span>
+                    <span className="font-serif italic font-extrabold">"সংশোধন ও শুদ্ধাচার মিশন"</span>
+                  </footer>
                 </div>
               </div>
             </div>
@@ -3860,6 +4258,448 @@ export default function App() {
                   REF: ANALYTICS-REPORT-{selectedMonth.toUpperCase()} • {new Date().toLocaleDateString("bn-BD")}
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* TAB 4: BEAUTIFUL DYNAMIC PORTRAIT PARENT MEETING EVENT PLAN */}
+          {activeTab === "event" && (
+            <div 
+              className="print-area w-full max-w-[21cm] bg-white text-black p-5 md:p-8 flex flex-col justify-between border-4 border-indigo-600/30 rounded-2xl shadow-[0_0_15px_rgba(0,0,0,0.08)] relative animate-fadeIn overflow-hidden"
+              style={{ 
+                fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
+                minHeight: '28.0cm' 
+              }}
+              id="event-a4-sheet"
+            >
+              <div>
+                {/* Visual rainbow/colorful header top decor */}
+                <div className="w-full h-2 bg-gradient-to-r from-red-500 via-amber-400 via-emerald-400 via-indigo-400 via-purple-500 to-pink-500 rounded-t" />
+
+                {/* Header Section */}
+                <header className="text-center border-b-2 border-indigo-600/35 pb-3 mb-4 mt-2 relative">
+                  {/* Decorative small sparkle badges */}
+                  <div className="absolute top-0 left-0 bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 animate-spin" />
+                    <span>বিশেষ ইভেন্ট</span>
+                  </div>
+                  <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    <span>A4 ১-পৃষ্ঠা রেডি</span>
+                  </div>
+
+                  <h1 className="text-2.5xl font-black text-indigo-900 tracking-tight leading-none mb-1">
+                    ডি-লিকন মডেল একাডেমী
+                  </h1>
+                  <p className="text-sm font-black text-rose-600 tracking-wide mt-1.5 flex items-center justify-center gap-1 bg-rose-50/50 py-1 px-4 rounded-full max-w-md mx-auto border border-rose-100">
+                    <span>✨</span> অভিভাবক সভার পূর্ণাঙ্গ ইভেন্ট প্ল্যান ও গাইডলাইন <span>✨</span>
+                  </p>
+                </header>
+
+                {/* 1. Event Flow (Timeline) */}
+                <section className="mb-4">
+                  <h2 className="text-sm font-black bg-indigo-900 text-white py-1.5 px-3.5 rounded-lg flex items-center gap-2 mb-2.5 shadow-sm">
+                    <Calendar className="w-4 h-4 text-yellow-300" />
+                    <span>📅 ইভেন্ট ফ্লো (Event Flow)</span>
+                  </h2>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {[
+                      { id: "০১", title: "কোরআন তেলাওয়াত", desc: "একজন শিক্ষার্থীর মাধ্যমে পবিত্র কুরআন পাঠ।", color: "bg-rose-100 text-rose-800 border-rose-200" },
+                      { id: "০২", title: "ভিডিও কন্টেন্ট", desc: "বিদ্যালয়ের কার্যক্রম ও মাল্টিমিডিয়া ক্লাসের ভিডিও প্রদর্শন।", color: "bg-amber-100 text-amber-800 border-amber-200" },
+                      { id: "০৩", title: "পাবলিশিং", desc: "শিক্ষার্থীর সৃজনশীল কাজ ও শিক্ষা উপকরণের প্রদর্শনী।", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+                      { id: "০৪", title: "সুসংবাদ", desc: "বিদ্যালয়ের সাম্প্রতিক সাফল্য ও অগ্রগতির খবর ঘোষণা।", color: "bg-sky-100 text-sky-800 border-sky-200" },
+                      { id: "০৫", title: "শিক্ষকের বক্তব্য", desc: "বিদ্যালয়ের কার্যকর স্কুলিং ও অভিভাবকদের করণীয় নিয়ে ভাষণ।", color: "bg-blue-100 text-blue-800 border-blue-200" },
+                      { id: "০৬", title: "মূল স্লাইড", desc: "প্রজেক্টরে পয়েন্ট ভিত্তিক স্লাইড প্রেজেন্টেশন।", color: "bg-violet-100 text-violet-800 border-violet-200" },
+                      { id: "০৭", title: "অভিভাবকদের উপস্থাপনা", desc: "নির্ধারিত টপিকে অভিভাবকদের মতামত প্রদান।", color: "bg-purple-100 text-purple-800 border-purple-200" },
+                      { id: "০৮", title: "একটিভিটি ও কুইজ", desc: "অংশগ্রহণমূলক কুইজ কনটেস্ট ও অঙ্গীকার পর্ব।", color: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200" },
+                      { id: "০৯", title: "সমাপ্তি ঘোষণা", desc: "প্রিন্সিপাল মহোদয়ের ধন্যবাদ জ্ঞাপন ও সভার সমাপ্তি।", color: "bg-pink-100 text-pink-800 border-pink-200" }
+                    ].map((step) => (
+                      <div 
+                        key={step.id} 
+                        className="flex items-center gap-3 bg-slate-50/70 border border-slate-150 p-1.5 px-3 rounded-lg hover:bg-slate-100 transition-colors"
+                      >
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0 border ${step.color} shadow-sm`}>
+                          {step.id}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black text-slate-900 leading-none flex items-center gap-1.5">
+                            <span>{step.title}</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-300" />
+                            <span className="text-[10px] text-slate-500 font-semibold truncate">{step.desc}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Two Column Layout for Quiz and Discussion */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  
+                  {/* 2. Quiz Box */}
+                  <section>
+                    <h2 className="text-sm font-black bg-amber-500 text-white py-1.5 px-3.5 rounded-lg flex items-center gap-2 mb-2 shadow-sm">
+                      <Sparkles className="w-4 h-4 text-white" />
+                      <span>💡 এঙ্গেজমেন্ট: কুইজ কনটেস্ট</span>
+                    </h2>
+                    <div className="bg-amber-50/50 border border-amber-200 rounded-xl p-3 flex flex-col gap-2 relative overflow-hidden h-full">
+                      <div className="absolute -right-6 -bottom-6 w-16 h-16 bg-amber-100 rounded-full opacity-35" />
+                      <div className="text-[11.5px] font-bold text-slate-800 space-y-2 leading-relaxed relative z-10">
+                        <div className="flex gap-1.5">
+                          <span className="text-amber-600 font-black">১.</span>
+                          <span>শিক্ষক মহোদয়ের মতে, পড়ার গোল্ডেন টাইম সন্ধ্যা কয়টা থেকে কয়টা?</span>
+                        </div>
+                        <div className="flex gap-1.5 border-t border-amber-100 pt-1.5">
+                          <span className="text-amber-600 font-black">২.</span>
+                          <span>...শিক্ষার্থীর নৈতিকতার জন্য কয়টি শুদ্ধাচারের কথা আজ বলা হয়েছে?</span>
+                        </div>
+                        <div className="flex gap-1.5 border-t border-amber-100 pt-1.5">
+                          <span className="text-amber-600 font-black">৩.</span>
+                          <span>ফোরকানিয়া না থাকলে সকালে কত ঘণ্টা পড়াশোনার পরামর্শ দেওয়া হয়েছে?</span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* 3. Discussion Box */}
+                  <section>
+                    <h2 className="text-sm font-black bg-teal-600 text-white py-1.5 px-3.5 rounded-lg flex items-center gap-2 mb-2 shadow-sm">
+                      <FileText className="w-4 h-4 text-yellow-300" />
+                      <span>🎤 অভিভাবকদের আলোচনার টপিক</span>
+                    </h2>
+                    <div className="bg-teal-50/50 border border-teal-200 rounded-xl p-3 flex flex-col gap-2 relative overflow-hidden h-full">
+                      <div className="absolute -right-6 -bottom-6 w-16 h-16 bg-teal-100 rounded-full opacity-35" />
+                      <div className="text-[11.5px] font-bold text-slate-800 space-y-2 leading-relaxed relative z-10">
+                        <div className="flex gap-2">
+                          <span className="text-teal-600 text-xs">●</span>
+                          <span>"ঘরে প্রযুক্তির সঠিক ব্যবহার ও মোবাইল আসক্তি প্রতিরোধ।"</span>
+                        </div>
+                        <div className="flex gap-2 border-t border-teal-100 pt-1.5">
+                          <span className="text-teal-600 text-xs">●</span>
+                          <span>"সন্তানের সাথে বন্ধুসুলভ আচরণ ও শাসনের ভারসাম্য।"</span>
+                        </div>
+                        <div className="flex gap-2 border-t border-teal-100 pt-1.5">
+                          <span className="text-teal-600 text-xs">●</span>
+                          <span>"শিষ্টাচার ও ধর্মীয় মূল্যবোধ চর্চায় পরিবারের ভূমিকা।"</span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                </div>
+
+                {/* 4. Parent's Pledge Card */}
+                <section className="mb-3">
+                  <div className="bg-indigo-50/60 border-2 border-dashed border-indigo-600/60 rounded-xl p-4 text-center relative overflow-hidden shadow-inner">
+                    <div className="absolute -left-10 -bottom-10 w-24 h-24 bg-indigo-100/40 rounded-full" />
+                    <div className="absolute -right-10 -top-10 w-24 h-24 bg-indigo-100/40 rounded-full" />
+
+                    <h3 className="text-sm font-black text-indigo-950 mb-1 flex items-center justify-center gap-1.5">
+                      <span>📜</span>
+                      <span>অভিভাবকের অঙ্গীকার পত্র (Parent's Pledge)</span>
+                      <span>📜</span>
+                    </h3>
+                    
+                    <p className="text-[11.5px] text-slate-700 leading-relaxed font-semibold px-4 my-2 text-justify">
+                      আমি <span className="border-b border-indigo-400 font-black text-indigo-950 px-6 inline-block bg-white/50">__________________________</span>, ডি-লিকন মডেল একাডেমীর একজন সচেতন অভিভাবক হিসেবে আজ থেকে অঙ্গীকার করছি যে— আমার সন্তানের উজ্জ্বল ভবিষ্যতের স্বার্থে তার বাড়িতে পড়াশোনার তদারকি করব, বাদ মাগরিব থেকে রাত ৯টা পর্যন্ত তার সাথে সময় দেব এবং তার আচরণগত শুদ্ধাচার গঠনে বিদ্যালয়ের সাথে একাত্ম হয়ে কাজ করব।
+                    </p>
+
+                    <div className="my-3 pt-2 border-t border-indigo-250/60 text-center">
+                      <p className="text-[11.5px] sm:text-xs font-black text-emerald-800 leading-normal italic">
+                        "আসুন আমরা প্রতিজ্ঞা করি, আমরা কেবল একজন ভালো ছাত্র নয়, বরং একজন নীতিবান ও শুদ্ধাচারী সন্তান উপহার দেব এই সমাজকে।"
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex justify-between items-end px-6 font-semibold">
+                      <div className="text-left text-[10px] text-slate-500">
+                        তারিখ: <span className="border-b border-indigo-350 px-4 pb-0.5">{new Date().toLocaleDateString("bn-BD")}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-xs text-indigo-950 border-b border-indigo-300 border-dashed inline-block px-12 pb-0.5 mb-1">
+                          &nbsp;
+                        </div>
+                        <div className="text-[10px] text-indigo-900 font-black">
+                          সচেতন অভিভাবকের স্বাক্ষর
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              {/* Footer Section */}
+              <div className="border-t border-indigo-100 pt-2 flex justify-between items-center text-[10px] font-black text-indigo-950/75 font-sans">
+                <span className="flex items-center gap-1 text-rose-600">
+                  <Heart className="w-3.5 h-3.5 fill-current text-rose-500 animate-pulse" />
+                  <span>আস্থা ও আন্তরিকতায়— ডি-লিকন মডেল একাডেমী পরিবার।</span>
+                </span>
+                <span className="font-mono text-[9px] text-slate-400">
+                  REF: EVENT-PLAN-{selectedMonth.toUpperCase()} • {new Date().toLocaleDateString("bn-BD")}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: BEAUTIFUL PARENT MEETING SLIDES & PRINTABLE HANDOUT */}
+          {activeTab === "slides" && (
+            <div className="w-full flex flex-col gap-4">
+              
+              {/* No Print Interactive Controls Panel */}
+              <div className="no-print w-full max-w-[21cm] bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col sm:flex-row gap-4 justify-between items-center mx-auto">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-50 text-purple-700 rounded-xl flex items-center justify-center shrink-0 border border-purple-200">
+                    <Monitor className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-sm font-black text-slate-900 leading-snug">
+                      অভিভাবক মতবিনিময় সভা: প্রেজেন্টেশন ও প্রিন্ট ড্যাশবোর্ড
+                    </h3>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      Presentation Slides & Printable Handouts (A4)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Switcher & Theme Selector */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="bg-slate-100 p-1 rounded-lg flex border border-slate-200 text-xs font-bold">
+                    <button
+                      onClick={() => setSlideViewMode("interactive")}
+                      className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                        slideViewMode === "interactive"
+                          ? "bg-black text-white shadow-sm"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <span>🖥️</span> স্লাইড শো মোড
+                    </button>
+                    <button
+                      onClick={() => setSlideViewMode("print")}
+                      className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                        slideViewMode === "print"
+                          ? "bg-black text-white shadow-sm"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <span>🖨️</span> A4 প্রিন্ট প্রিভিউ
+                    </button>
+                  </div>
+
+                  {slideViewMode === "interactive" && (
+                    <select
+                      value={slideTheme}
+                      onChange={(e) => setSlideTheme(e.target.value as any)}
+                      className="px-2.5 py-1.5 bg-white border border-slate-250 rounded-lg text-xs font-bold text-slate-750 cursor-pointer hover:bg-slate-50"
+                    >
+                      <option value="deep-indigo">🎨 নীল থিম</option>
+                      <option value="midnight-teal">🎨 নীলচে-সবুজ থিম</option>
+                      <option value="crimson-rose">🎨 লাল-গোলাপ থিম</option>
+                      <option value="elegant-slate">🎨 মিনিমাল স্লেট থিম</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              {/* 1. INTERACTIVE MODE RENDER CONTAINER */}
+              {slideViewMode === "interactive" && (
+                <div className="no-print w-full max-w-[21cm] bg-slate-950 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl relative flex flex-col justify-between min-h-[480px] mx-auto">
+                  
+                  {/* Decorative slide glow and background */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${
+                    slideTheme === "deep-indigo" 
+                      ? "from-indigo-950 via-slate-950 to-indigo-900"
+                      : slideTheme === "midnight-teal"
+                      ? "from-teal-950 via-slate-950 to-emerald-950"
+                      : slideTheme === "crimson-rose"
+                      ? "from-rose-950 via-slate-950 to-purple-950"
+                      : "from-slate-900 via-zinc-950 to-slate-900"
+                  } opacity-95 transition-all duration-500`} />
+
+                  {/* Top bar with logo and status */}
+                  <div className="relative z-10 px-6 py-4 flex justify-between items-center border-b border-white/10 bg-black/25">
+                    <span className="text-[11px] font-black tracking-widest text-slate-400 font-sans uppercase flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-spin" />
+                      <span>ডি-লিকন মডেল একাডেমী • অভিভাবক মতবিনিময়</span>
+                    </span>
+                    <span className="text-xs font-black bg-white/10 text-white/90 px-3 py-1 rounded-full border border-white/5 font-sans">
+                      স্লাইড: {toBnNum(currentSlideIndex + 1)} / ৯
+                    </span>
+                  </div>
+
+                  {/* Active Slide Body Area */}
+                  <div className="relative z-10 px-8 py-10 flex-1 flex flex-col justify-center items-center text-center">
+                    <div className="max-w-2xl mx-auto flex flex-col items-center">
+                      
+                      {/* Interactive slide floating big icon */}
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg border border-white/10 ${
+                        slideTheme === "deep-indigo" 
+                          ? "bg-indigo-500/20 text-indigo-400"
+                          : slideTheme === "midnight-teal"
+                          ? "bg-teal-500/20 text-teal-400"
+                          : slideTheme === "crimson-rose"
+                          ? "bg-rose-500/20 text-rose-400"
+                          : "bg-slate-500/20 text-slate-300"
+                      }`}>
+                        {getSlideIcon(slidesData[currentSlideIndex].iconName, "w-7 h-7")}
+                      </div>
+
+                      {/* Title */}
+                      <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-2">
+                        {slidesData[currentSlideIndex].title}
+                      </h2>
+
+                      {/* Subtitle */}
+                      <p className="text-sm md:text-base font-bold text-slate-300 tracking-wide bg-white/5 py-1.5 px-6 rounded-full border border-white/5 mb-6 max-w-lg">
+                        {slidesData[currentSlideIndex].subTitle}
+                      </p>
+
+                      {/* Bullet points with neat stagger animations */}
+                      <div className="w-full text-left bg-black/35 border border-white/5 p-6 rounded-2xl space-y-3.5 max-w-xl shadow-inner mb-6">
+                        {slidesData[currentSlideIndex].points.map((pt, pIdx) => (
+                          <div key={pIdx} className="flex items-start gap-3">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-1.5 animate-pulse" />
+                            <p className="text-xs md:text-sm font-bold text-slate-100 leading-relaxed">
+                              {pt}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Floating Key Message Footer */}
+                      <div className="text-center font-bold text-[11px] md:text-xs text-rose-300 tracking-wide mt-2">
+                        💡 {slidesData[currentSlideIndex].message}
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Bottom Navigation controls bar */}
+                  <div className="relative z-10 px-8 py-5 flex justify-between items-center bg-black/40 border-t border-white/10">
+                    <button
+                      onClick={() => setCurrentSlideIndex(prev => Math.max(0, prev - 1))}
+                      disabled={currentSlideIndex === 0}
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-30 disabled:pointer-events-none border border-white/5 cursor-pointer active:scale-95"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>পূর্ববর্তী স্লাইড</span>
+                    </button>
+
+                    {/* Progress dots */}
+                    <div className="flex gap-1.5">
+                      {slidesData.map((_, dotIdx) => (
+                        <button
+                          key={dotIdx}
+                          onClick={() => setCurrentSlideIndex(dotIdx)}
+                          className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                            dotIdx === currentSlideIndex 
+                              ? "bg-purple-500 scale-125" 
+                              : "bg-white/20 hover:bg-white/40"
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentSlideIndex(prev => Math.min(slidesData.length - 1, prev + 1))}
+                      disabled={currentSlideIndex === slidesData.length - 1}
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-30 disabled:pointer-events-none border border-white/5 cursor-pointer active:scale-95"
+                    >
+                      <span>পরবর্তী স্লাইড</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. PRINT HANDOUT MODE (PREVIEW ON SCREEN OR ALWAYS PRINTED) */}
+              <div 
+                className={`print-area w-full max-w-[21cm] bg-white text-black p-5 md:p-8 flex flex-col justify-between border-4 border-purple-600/30 rounded-2xl shadow-[0_0_15px_rgba(0,0,0,0.08)] relative overflow-hidden mx-auto ${
+                  slideViewMode === "print" ? "block" : "hidden print:flex"
+                }`}
+                style={{ 
+                  fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
+                  minHeight: '28.0cm' 
+                }}
+                id="slides-a4-sheet"
+              >
+                <div>
+                  {/* Decorative colorful top rainbow border */}
+                  <div className="w-full h-2 bg-gradient-to-r from-purple-600 via-indigo-500 via-sky-400 via-emerald-400 via-yellow-400 to-rose-500 rounded-t" />
+
+                  {/* Printable Header Section */}
+                  <header className="text-center border-b-2 border-purple-600/35 pb-3 mb-3 mt-1.5 relative">
+                    <div className="absolute top-0 left-0 bg-purple-50 text-purple-600 border border-purple-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 no-print">
+                      <span>🖥️</span>
+                      <span>প্রেজেন্টেশন হ্যান্ডআউট</span>
+                    </div>
+                    <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 no-print">
+                      <span>✓</span>
+                      <span>৯ স্লাইড ১-পৃষ্ঠায়</span>
+                    </div>
+
+                    <h1 className="text-2xl font-black text-purple-950 tracking-tight leading-none mb-1">
+                      ডি-লিকন মডেল একাডেমী
+                    </h1>
+                    <p className="text-[11px] font-black text-rose-600 tracking-wide mt-1 flex items-center justify-center gap-1 bg-rose-50/50 py-0.5 px-4 rounded-full max-w-md mx-auto border border-rose-100">
+                      <span>✨</span> অভিভাবক মতবিনিময় সভা: স্লাইড প্রেজেন্টেশন হ্যান্ডআউট (১ পৃষ্ঠায় রেডি) <span>✨</span>
+                    </p>
+                  </header>
+
+                  {/* 3x3 Grid of Slides */}
+                  <div className="grid grid-cols-3 gap-3" id="slides-grid">
+                    {slidesData.map((slide) => (
+                      <div 
+                        key={slide.id} 
+                        className="slide-handout-card border border-purple-200/80 bg-purple-50/30 rounded-xl flex flex-col justify-between shadow-sm relative overflow-hidden"
+                      >
+                        {/* Tiny corner slide number badge */}
+                        <div className="absolute top-1 right-1 bg-purple-900 text-white font-extrabold text-[8px] w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-sm">
+                          {slide.numberBn}
+                        </div>
+
+                        {/* Top layout */}
+                        <div className="text-left">
+                          {/* Slide Title */}
+                          <h3 className="text-[10px] font-black text-purple-950 flex items-center gap-1 border-b border-purple-100 pb-1 pr-4.5 leading-snug">
+                            <span className="shrink-0">{getSlideIcon(slide.iconName, "w-3 h-3 text-purple-600")}</span>
+                            <span className="truncate">{slide.title}</span>
+                          </h3>
+
+                          {/* Slide Subtitle */}
+                          <p className="slide-subtitle text-[8px] font-black text-rose-600 leading-snug mt-1 mb-1 font-sans">
+                            {slide.subTitle}
+                          </p>
+
+                          {/* Bullet Points */}
+                          <ul className="list-disc pl-3 text-slate-800 space-y-0.5">
+                            {slide.points.map((pt, pIdx) => (
+                              <li key={pIdx} className="text-[7.2px] font-bold leading-tight">
+                                {pt}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Message box */}
+                        <div className="slide-footer-msg mt-1 bg-white/85 border border-purple-100 rounded p-1 text-center font-bold text-[7px] text-purple-900 leading-snug shadow-inner shrink-0">
+                          🎯 {slide.message}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Printable Footer Section */}
+                <div className="border-t border-purple-100 pt-1.5 flex justify-between items-center text-[9px] font-black text-purple-950/75 font-sans mt-2">
+                  <span className="flex items-center gap-1 text-rose-600">
+                    <Heart className="w-3.5 h-3.5 fill-current text-rose-500 animate-pulse" />
+                    <span>শিক্ষা ও চরিত্র গঠনে অংশীদারিত্ব— ডি-লিকন মডেল একাডেমী পরিবার।</span>
+                  </span>
+                  <span className="font-mono text-[8px] text-slate-400">
+                    REF: PRESENTATION-SLIDES-{selectedMonth.toUpperCase()} • {new Date().toLocaleDateString("bn-BD")}
+                  </span>
+                </div>
+              </div>
+
             </div>
           )}
 
