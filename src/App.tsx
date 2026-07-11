@@ -38,9 +38,20 @@ import {
   Terminal,
   ArrowLeftRight,
   Monitor,
-  ChevronLeft
+  ChevronLeft,
+  Activity,
+  Tablet
 } from "lucide-react";
 import { db } from "./firebase";
+import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
+import {
+  slidesForStudents,
+  slidesForTeachers,
+  slidesForParents,
+  studentPrompt,
+  teacherPrompt,
+  parentPrompt
+} from "./slidesData";
 import { 
   collection, 
   onSnapshot, 
@@ -69,141 +80,6 @@ function toBnNum(num: number | string): string {
     .join("");
 }
 
-// 9-Slide Presentation Content for Parent Meeting
-const slidesData = [
-  {
-    id: 1,
-    numberBn: "১",
-    title: "স্বাগতম ও শিরোনাম",
-    subTitle: "অভিভাবক মতবিনিময় সভা: আগামীর স্বপ্নে আমরা ও আমাদের সন্তান।",
-    points: [
-      "ষষ্ঠ-অষ্টম শ্রেণির শিক্ষার্থীদের সামগ্রিক উন্নয়নে বিদ্যালয় ও পরিবারের ভূমিকা।"
-    ],
-    message: "আস্থা ও আন্তরিকতায়— ডি-লিকন মডেল একাডেমী পরিবার।",
-    visualText: "বিদ্যালয়ের ছবি বা একটি প্রদীপ্ত বাতির ব্যাকগ্রাউন্ড",
-    iconName: "Sparkles",
-    bgColor: "from-indigo-900 to-indigo-950 text-white",
-    accentBg: "bg-indigo-50 text-indigo-700 border-indigo-200"
-  },
-  {
-    id: 2,
-    numberBn: "২",
-    title: "আমাদের অঙ্গীকার (বিদ্যালয়ের ভূমিকা)",
-    subTitle: "আমরা আপনার সন্তানের জন্য সেরাটা দিচ্ছি।",
-    points: [
-      "সরকার নির্ধারিত আধুনিক ও জীবনমুখী শিক্ষাক্রম অনুসরণ।",
-      "দক্ষ শিক্ষক মণ্ডলী দ্বারা কার্যকর ও আনন্দদায়ক পাঠদান।",
-      "শ্রেণিকক্ষেই পাঠ্যবিষয়ের মূল ধারণা স্পষ্ট করার প্রচেষ্টা।"
-    ],
-    message: "শ্রেণিকক্ষে পাঠদানের একটি প্রাণবন্ত ছবি ও দৃশ্যকল্প।",
-    iconName: "CheckSquare",
-    bgColor: "from-blue-900 to-blue-950 text-white",
-    accentBg: "bg-blue-50 text-blue-700 border-blue-200"
-  },
-  {
-    id: 3,
-    numberBn: "৩",
-    title: "বাড়িতে শিখন পরিবেশ: ৩টি বিশেষ অভ্যাস",
-    subTitle: "পাঠের ধারাবাহিকতা রক্ষায় আপনার করণীয়।",
-    points: [
-      "স্কুল থেকে ফেরার পরপরই: দুপুরের খাবার ও বিশ্রামের পর যেন দ্রুত হোমワーク শেষ করে ফেলে। এতে ভুলে যাওয়ার প্রবণতা কমে।",
-      "সন্ধ্যার সোনালী সময়: বাদ মাগরিব থেকে রাত ৯টা পর্যন্ত পড়ার টেবিলে পূর্ণ সক্রিয়তা নিশ্চিত করা।",
-      "ভোরের বরকত: খুব ভোরে ঘুম থেকে ওঠার অভ্যাস। (ফোরকানিয়া না থাকলে অন্তত ২ ঘণ্টা পাঠ্যবই পড়া)।"
-    ],
-    message: "একটি ঘড়ির আইকন এবং পড়ার টেবিলের ছবি।",
-    iconName: "Clock",
-    bgColor: "from-amber-900 to-yellow-950 text-white",
-    accentBg: "bg-amber-50 text-amber-700 border-amber-200"
-  },
-  {
-    id: 4,
-    numberBn: "৪",
-    title: "পাঠ্যবই শুধু নম্বর পাওয়ার জন্য নয়",
-    subTitle: "এই বয়সের পাঠ্যসূচি জীবনের ভিত্তি।",
-    points: [
-      "গণিত: কেবল হিসাব নয়, এটি যুক্তিনির্ভর চিন্তা করতে শেখায়।",
-      "বিজ্ঞান: চারপাশের জগৎকে চিনে নিজেকে নিরাপদ রাখার কৌশল।",
-      "ইতিহাস ও সমাজ: সুনাগরিক হিসেবে নিজের শেকড়কে চেনা।"
-    ],
-    message: "আজকের পাঠ্যবিষয়গুলো তাদের আগামী জীবনের সমস্যার সমাধান।",
-    iconName: "BookOpen",
-    bgColor: "from-rose-900 to-purple-950 text-white",
-    accentBg: "bg-rose-50 text-rose-700 border-rose-200"
-  },
-  {
-    id: 5,
-    numberBn: "৫",
-    title: "ভুল সংশোধন: আজই হোক শুরু",
-    subTitle: "ছোট ভুল যেন বড় অভ্যাসে পরিণত না হয়।",
-    points: [
-      "সন্তানের আচরণের ছোট ভুল বা অবাধ্যতাকে আজই আদরের সাথে সংশোধন করুন।",
-      "আজকের অবহেলা আগামীকাল বদঅভ্যাস বা আসক্তিতে (যেমন: মোবাইল আসক্তি) রূপ নিতে পারে।"
-    ],
-    message: "দমনের চেয়ে সংশোধন উত্তম; কিন্তু তা হতে হবে এখনই।",
-    iconName: "AlertTriangle",
-    bgColor: "from-purple-900 to-purple-950 text-white",
-    accentBg: "bg-purple-50 text-purple-700 border-purple-200"
-  },
-  {
-    id: 6,
-    numberBn: "৬",
-    title: "নৈতিকতা ও শুদ্ধাচারের ৪টি স্তম্ভ",
-    subTitle: "আমাদের সন্তান হবে আদর্শ মানুষ।",
-    points: [
-      "শিষ্টাচার ও অভিবাদন (সালাম/আদাব): বড়দের সম্মান এবং ছোটদের স্নেহ করার হাতেকলমে শিক্ষা।",
-      "সত্যবাদিতা ও সততা: নিজের ভুল স্বীকার করার সাহস এবং অন্যের জিনিসের প্রতি লোভ না করা।",
-      "শৃঙ্খল জীবন: নিজের পড়ার টেবিল, বিছানা ও পোশাক পরিপাটি রাখার অভ্যাস।",
-      "ডিজিটাল শুদ্ধাচার: প্রয়োজনে প্রযুক্তি ব্যবহার করা, কিন্তু আসক্ত না হওয়া এবং সোশ্যাল মিডিয়ায় মার্জিত থাকা।"
-    ],
-    message: "৪টি শুদ্ধাচারের আলোয় আলোকিত চরিত্র।",
-    iconName: "Award",
-    bgColor: "from-emerald-900 to-emerald-950 text-white",
-    accentBg: "bg-emerald-50 text-emerald-700 border-emerald-200"
-  },
-  {
-    id: 7,
-    numberBn: "৭",
-    title: "ধর্মীয় শিক্ষা ও মূল্যবোধ",
-    subTitle: "ধর্মের মর্মবাণীই হলো সদাচরণ।",
-    points: [
-      "ধর্মীয় অনুশাসন পালনে উৎসাহ প্রদান।",
-      "ধর্মীয় শিক্ষার পাশাপাশি মানুষের সাথে ভালো ব্যবহার (ম্যানার) শেখানো।"
-    ],
-    message: "শিক্ষিত হওয়ার আগে ভালো মানুষ হওয়া জরুরি।",
-    iconName: "Heart",
-    bgColor: "from-pink-900 to-pink-950 text-white",
-    accentBg: "bg-pink-50 text-pink-700 border-pink-200"
-  },
-  {
-    id: 8,
-    numberBn: "৮",
-    title: "বিদ্যালয় ও অভিভাবকের মেলবন্ধন",
-    subTitle: "আমরা এবং আপনারা—একই টিমের সদস্য।",
-    points: [
-      "শিক্ষকদের ওপর আস্থা রাখুন; কোনো সমস্যা হলে সরাসরি আলোচনা করুন।",
-      "আপনার সচেতনতাই সন্তানের সুন্দর ভবিষ্যতের নিশ্চয়তা।"
-    ],
-    message: "স্কুল গড়বে জ্ঞান, পরিবার গড়বে চরিত্র।",
-    iconName: "ArrowLeftRight",
-    bgColor: "from-teal-900 to-teal-950 text-white",
-    accentBg: "bg-teal-50 text-teal-700 border-teal-200"
-  },
-  {
-    id: 9,
-    numberBn: "৯",
-    title: "ধন্যবাদ ও প্রশ্নোত্তর",
-    subTitle: "আপনার মতামত আমাদের কাম্য।",
-    points: [
-      "আলোচনার জন্য ফ্লোর উন্মুক্ত করুন এবং মুক্ত মতামত দিন।",
-      "আজকের সভার সমাপ্তি ও ভবিষ্যৎ শুভকামনা।"
-    ],
-    message: "আজকের উপস্থিতির জন্য আন্তরিক ধন্যবাদ ও সাধুবাদ।",
-    iconName: "CheckCircle",
-    bgColor: "from-slate-900 to-slate-950 text-white",
-    accentBg: "bg-slate-50 text-slate-700 border-slate-200"
-  }
-];
-
 // Helper to get React element for icons in slides
 const getSlideIcon = (name: string, className = "w-5 h-5") => {
   switch (name) {
@@ -216,6 +92,10 @@ const getSlideIcon = (name: string, className = "w-5 h-5") => {
     case "Heart": return <Heart className={className} />;
     case "ArrowLeftRight": return <ArrowLeftRight className={className} />;
     case "CheckCircle": return <CheckCircle className={className} />;
+    case "Target": return <Target className={className} />;
+    case "Activity": return <Activity className={className} />;
+    case "Tablet": return <Tablet className={className} />;
+    case "FileText": return <FileText className={className} />;
     default: return <Sparkles className={className} />;
   }
 };
@@ -355,6 +235,20 @@ export default function App() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [slideViewMode, setSlideViewMode] = useState<"interactive" | "print">("interactive");
   const [slideTheme, setSlideTheme] = useState<"deep-indigo" | "midnight-teal" | "crimson-rose" | "elegant-slate">("deep-indigo");
+  const [slidesAudience, setSlidesAudience] = useState<"student" | "teacher" | "parent">("student");
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+
+  const slidesData = useMemo(() => {
+    if (slidesAudience === "teacher") return slidesForTeachers;
+    if (slidesAudience === "parent") return slidesForParents;
+    return slidesForStudents;
+  }, [slidesAudience]);
+
+  const activePrompt = useMemo(() => {
+    if (slidesAudience === "teacher") return teacherPrompt;
+    if (slidesAudience === "parent") return parentPrompt;
+    return studentPrompt;
+  }, [slidesAudience]);
 
   // Certificate customization states
   const [certTitle, setCertTitle] = useState("উত্তম শিষ্টাচার ও অনুকরণীয় চরিত্র প্রশংসাপত্র");
@@ -4201,10 +4095,19 @@ export default function App() {
                   })()}
                 </div>
 
-                {/* Section 5: Print Signature details for Mentors/Parents/Teachers */}
+                {/* Section 5: D3-Based Daily Goal Completion & Progress Analytics */}
+                <div className="mb-4">
+                  <DailyGoalD3Chart 
+                    rows={rows} 
+                    daysCount={daysCount} 
+                    weeklyProgress={weeklyProgress} 
+                  />
+                </div>
+
+                {/* Section 6: Print Signature details for Mentors/Parents/Teachers */}
                 <div className="mt-4 border-t border-dashed border-neutral-400 pt-3 mb-2 font-semibold font-sans">
                   <h3 className="text-xs font-black uppercase tracking-wider text-indigo-950 mb-1">
-                    ৫. অভিভাবক মূল্যায়ন ও শিক্ষক রিভিউ স্বাক্ষর বোর্ড
+                    ৬. অভিভাবক মূল্যায়ন ও শিক্ষক রিভিউ স্বাক্ষর বোর্ড
                   </h3>
                   <p className="text-[10px] text-gray-500 mb-4 leading-none">
                     এই প্রগতি মূল্যায়ন প্রতিবেদন সংগৃহীত ডেটাবেস রেফারেন্স অনুযায়ী সঠিক এবং বিদ্যালয়ের মূল্যায়নে ব্যবহারের উপযুক্ত।
@@ -4439,63 +4342,133 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 5: BEAUTIFUL PARENT MEETING SLIDES & PRINTABLE HANDOUT */}
+          {/* TAB 5: BEAUTIFUL EVENT PLANNER & PRESENTATION SLIDES & PRINTABLE HANDOUT */}
           {activeTab === "slides" && (
             <div className="w-full flex flex-col gap-4">
               
-              {/* No Print Interactive Controls Panel */}
-              <div className="no-print w-full max-w-[21cm] bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col sm:flex-row gap-4 justify-between items-center mx-auto">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-50 text-purple-700 rounded-xl flex items-center justify-center shrink-0 border border-purple-200">
-                    <Monitor className="w-5 h-5 animate-pulse" />
+              {/* Audience & Slides Controls Header */}
+              <div className="no-print w-full max-w-[21cm] bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-4 mx-auto">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-50 text-purple-700 rounded-xl flex items-center justify-center shrink-0 border border-purple-200">
+                      <Monitor className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-sm font-black text-slate-900 leading-snug">
+                        হোমটাইম মনিটরিং প্রেজেন্টেশন ও প্রিন্ট ড্যাশবোর্ড
+                      </h3>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                        Stakeholder Presentations, Handouts & PowerPoint Prompt Generator
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <h3 className="text-sm font-black text-slate-900 leading-snug">
-                      অভিভাবক মতবিনিময় সভা: প্রেজেন্টেশন ও প্রিন্ট ড্যাশবোর্ড
-                    </h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                      Presentation Slides & Printable Handouts (A4)
-                    </p>
+
+                  {/* Mode & Theme switchers */}
+                  <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto justify-between md:justify-end">
+                    <div className="bg-slate-100 p-1 rounded-lg flex border border-slate-200 text-xs font-bold">
+                      <button
+                        onClick={() => setSlideViewMode("interactive")}
+                        className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                          slideViewMode === "interactive"
+                            ? "bg-black text-white shadow-sm"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        <span>🖥️</span> স্লাইড শো
+                      </button>
+                      <button
+                        onClick={() => setSlideViewMode("print")}
+                        className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                          slideViewMode === "print"
+                            ? "bg-black text-white shadow-sm"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        <span>🖨️</span> A4 প্রিন্ট প্রিভিউ
+                      </button>
+                    </div>
+
+                    {slideViewMode === "interactive" && (
+                      <select
+                        value={slideTheme}
+                        onChange={(e) => setSlideTheme(e.target.value as any)}
+                        className="px-2.5 py-1.5 bg-white border border-slate-250 rounded-lg text-xs font-bold text-slate-750 cursor-pointer hover:bg-slate-50"
+                      >
+                        <option value="deep-indigo">🎨 নীল থিম</option>
+                        <option value="midnight-teal">🎨 নীলচে-সবুজ থিম</option>
+                        <option value="crimson-rose">🎨 লাল-গোলাপ থিম</option>
+                        <option value="elegant-slate">🎨 মিনিমাল স্লেট থিম</option>
+                      </select>
+                    )}
                   </div>
                 </div>
 
-                {/* Switcher & Theme Selector */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="bg-slate-100 p-1 rounded-lg flex border border-slate-200 text-xs font-bold">
+                {/* Stakeholder Category Switcher */}
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                    <span>🎯</span> টার্গেট অডিয়েন্স নির্বাচন করুন:
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
-                      onClick={() => setSlideViewMode("interactive")}
-                      className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
-                        slideViewMode === "interactive"
-                          ? "bg-black text-white shadow-sm"
-                          : "text-slate-600 hover:text-slate-900"
+                      onClick={() => {
+                        setSlidesAudience("student");
+                        setCurrentSlideIndex(0);
+                      }}
+                      className={`px-4 py-3 rounded-xl border font-black text-xs transition flex items-center justify-between cursor-pointer ${
+                        slidesAudience === "student"
+                          ? "bg-indigo-50 border-indigo-300 text-indigo-900 shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <span>🖥️</span> স্লাইড শো মোড
+                      <span className="flex items-center gap-2">
+                        <span className="text-base">🧒</span>
+                        <span>শিক্ষার্থীদের জন্য স্লাইড</span>
+                      </span>
+                      <span className="bg-indigo-200/50 text-indigo-800 text-[10px] px-2 py-0.5 rounded-full font-sans font-black">
+                        ১০ স্লাইড
+                      </span>
                     </button>
+
                     <button
-                      onClick={() => setSlideViewMode("print")}
-                      className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
-                        slideViewMode === "print"
-                          ? "bg-black text-white shadow-sm"
-                          : "text-slate-600 hover:text-slate-900"
+                      onClick={() => {
+                        setSlidesAudience("teacher");
+                        setCurrentSlideIndex(0);
+                      }}
+                      className={`px-4 py-3 rounded-xl border font-black text-xs transition flex items-center justify-between cursor-pointer ${
+                        slidesAudience === "teacher"
+                          ? "bg-purple-50 border-purple-300 text-purple-900 shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <span>🖨️</span> A4 প্রিন্ট প্রিভিউ
+                      <span className="flex items-center gap-2">
+                        <span className="text-base">👨‍🏫</span>
+                        <span>শিক্ষকদের জন্য স্লাইড</span>
+                      </span>
+                      <span className="bg-purple-200/50 text-purple-800 text-[10px] px-2 py-0.5 rounded-full font-sans font-black">
+                        ১০ স্লাইড
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSlidesAudience("parent");
+                        setCurrentSlideIndex(0);
+                      }}
+                      className={`px-4 py-3 rounded-xl border font-black text-xs transition flex items-center justify-between cursor-pointer ${
+                        slidesAudience === "parent"
+                          ? "bg-rose-50 border-rose-300 text-rose-900 shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-base">👨‍👩‍👦</span>
+                        <span>অভিভাবকদের জন্য স্লাইড</span>
+                      </span>
+                      <span className="bg-rose-200/50 text-rose-800 text-[10px] px-2 py-0.5 rounded-full font-sans font-black">
+                        ১০ স্লাইড
+                      </span>
                     </button>
                   </div>
-
-                  {slideViewMode === "interactive" && (
-                    <select
-                      value={slideTheme}
-                      onChange={(e) => setSlideTheme(e.target.value as any)}
-                      className="px-2.5 py-1.5 bg-white border border-slate-250 rounded-lg text-xs font-bold text-slate-750 cursor-pointer hover:bg-slate-50"
-                    >
-                      <option value="deep-indigo">🎨 নীল থিম</option>
-                      <option value="midnight-teal">🎨 নীলচে-সবুজ থিম</option>
-                      <option value="crimson-rose">🎨 লাল-গোলাপ থিম</option>
-                      <option value="elegant-slate">🎨 মিনিমাল স্লেট থিম</option>
-                    </select>
-                  )}
                 </div>
               </div>
 
@@ -4518,10 +4491,18 @@ export default function App() {
                   <div className="relative z-10 px-6 py-4 flex justify-between items-center border-b border-white/10 bg-black/25">
                     <span className="text-[11px] font-black tracking-widest text-slate-400 font-sans uppercase flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-spin" />
-                      <span>ডি-লিকন মডেল একাডেমী • অভিভাবক মতবিনিময়</span>
+                      <span>
+                        ডি-লিকন মডেল স্কুল • {
+                          slidesAudience === "student" 
+                            ? "শিক্ষার্থী নির্দেশিকা" 
+                            : slidesAudience === "teacher" 
+                            ? "শিক্ষক কর্মশালা" 
+                            : "অভিভাবক মতবিনিময়"
+                        }
+                      </span>
                     </span>
                     <span className="text-xs font-black bg-white/10 text-white/90 px-3 py-1 rounded-full border border-white/5 font-sans">
-                      স্লাইড: {toBnNum(currentSlideIndex + 1)} / ৯
+                      স্লাইড: {toBnNum(currentSlideIndex + 1)} / {toBnNum(slidesData.length)}
                     </span>
                   </div>
 
@@ -4633,14 +4614,20 @@ export default function App() {
                     </div>
                     <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 no-print">
                       <span>✓</span>
-                      <span>৯ স্লাইড ১-পৃষ্ঠায়</span>
+                      <span>{toBnNum(slidesData.length)} স্লাইড ১-পৃষ্ঠায়</span>
                     </div>
 
                     <h1 className="text-2xl font-black text-purple-950 tracking-tight leading-none mb-1">
-                      ডি-লিকন মডেল একাডেমী
+                      ডি-লিকন মডেল স্কুল
                     </h1>
                     <p className="text-[11px] font-black text-rose-600 tracking-wide mt-1 flex items-center justify-center gap-1 bg-rose-50/50 py-0.5 px-4 rounded-full max-w-md mx-auto border border-rose-100">
-                      <span>✨</span> অভিভাবক মতবিনিময় সভা: স্লাইড প্রেজেন্টেশন হ্যান্ডআউট (১ পৃষ্ঠায় রেডি) <span>✨</span>
+                      <span>✨</span> {
+                        slidesAudience === "student"
+                          ? "শিক্ষার্থী নির্দেশিকা: স্লাইড প্রেজেন্টেশন হ্যান্ডআউট"
+                          : slidesAudience === "teacher"
+                          ? "শিক্ষক কর্মশালা: স্লাইড প্রেজেন্টেশন হ্যান্ডআউট"
+                          : "অভিভাবক মতবিনিময় সভা: স্লাইড প্রেজেন্টেশন হ্যান্ডআউট"
+                      } <span>✨</span>
                     </p>
                   </header>
 
@@ -4692,11 +4679,66 @@ export default function App() {
                 <div className="border-t border-purple-100 pt-1.5 flex justify-between items-center text-[9px] font-black text-purple-950/75 font-sans mt-2">
                   <span className="flex items-center gap-1 text-rose-600">
                     <Heart className="w-3.5 h-3.5 fill-current text-rose-500 animate-pulse" />
-                    <span>শিক্ষা ও চরিত্র গঠনে অংশীদারিত্ব— ডি-লিকন মডেল একাডেমী পরিবার।</span>
+                    <span>শিক্ষা ও চরিত্র গঠনে অংশীদারিত্ব— ডি-লিকন মডেল স্কুল পরিবার।</span>
                   </span>
                   <span className="font-mono text-[8px] text-slate-400">
                     REF: PRESENTATION-SLIDES-{selectedMonth.toUpperCase()} • {new Date().toLocaleDateString("bn-BD")}
                   </span>
+                </div>
+              </div>
+
+              {/* PowerPoint (PPT) Prompt Generator Box - no-print */}
+              <div className="no-print w-full max-w-[21cm] bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-200/80 rounded-2xl p-5 mx-auto mt-6 shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                  <div>
+                    <h4 className="text-sm font-black text-purple-950 flex items-center gap-2">
+                      <span className="text-lg">🤖</span> AI PowerPoint (PPT) প্রম্পট জেনারেটর
+                    </h4>
+                    <p className="text-[11px] text-slate-600 font-bold mt-1">
+                      এই টার্গেট গ্রুপের জন্য ১০ স্লাইডের দৃষ্টিনন্দন পাওয়ারপয়েন্ট প্রেজেন্টেশন স্লাইড তৈরি করতে নিচের প্রম্পটটি ব্যবহার করুন।
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(activePrompt);
+                      setCopiedPrompt(true);
+                      setTimeout(() => setCopiedPrompt(false), 2500);
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 shadow transition-all cursor-pointer active:scale-95 ${
+                      copiedPrompt 
+                        ? "bg-emerald-600 text-white" 
+                        : "bg-purple-600 text-white hover:bg-purple-700"
+                    }`}
+                  >
+                    {copiedPrompt ? (
+                      <>
+                        <span>✓</span>
+                        <span>কপি করা হয়েছে!</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>📋</span>
+                        <span>প্রম্পট কপি করুন</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    readOnly
+                    value={activePrompt}
+                    className="w-full h-36 p-3 bg-white/85 border border-slate-200 rounded-xl text-[11px] leading-relaxed font-mono text-slate-800 focus:outline-none resize-none shadow-inner"
+                  />
+                  <div className="absolute bottom-2.5 right-2.5 text-[9px] bg-slate-950 text-slate-400 font-black px-2 py-1 rounded border border-slate-800">
+                    {toBnNum(activePrompt.length)} অক্ষর
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 text-[10px] text-purple-900 font-black">
+                  <span>💡</span>
+                  <span>নির্দেশনা: প্রম্পটটি কপি করে ChatGPT, Claude বা Gemini-তে পেস্ট করলে স্লাইডের পূর্ণ স্ক্রিপ্ট ও ডিজাইন গাইড পেয়ে যাবেন।</span>
                 </div>
               </div>
 
