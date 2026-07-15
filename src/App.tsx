@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, Fragment } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   Printer, 
   RotateCcw, 
@@ -3078,7 +3078,7 @@ export default function App() {
                   onClick={() => exportData("json")}
                   className="bg-indigo-950 hover:bg-indigo-900 text-white text-xs font-black px-4 py-2.5 rounded-lg transition active:scale-95 cursor-pointer shadow border border-indigo-500 flex items-center gap-1.5"
                 >
-                  📥 JSON ব্যাকআপ রফতানি
+                  📥 JSON BACKUP রফতানি
                 </button>
               </div>
             </div>
@@ -3205,7 +3205,7 @@ export default function App() {
                     <div>
                       <span className={`font-black uppercase text-[8.5px] block ${themeMode === "professional-polish" ? "text-slate-500" : "text-gray-500"}`}>🎯 সর্বমোট রুটিন লক্ষ্য</span>
                       <span className="font-extrabold text-black text-xs mt-0.5 block">
-                        {toBnNum(daysCount)} দিনে মোট <span className="text-indigo-900 font-black">{toBnNum(maxPossiblePoints)}</span> টি সৎ অভ্যাস লক্ষ্য
+                        {toBnNum(daysCount)} দিনে মোট <span className="text-indigo-900 font-black">{toBnNum(totalTicksExpected)}</span> টি সৎ অভ্যাস লক্ষ্য
                       </span>
                     </div>
                     <div className={`w-[1.5px] h-7 ${themeMode === "professional-polish" ? "bg-indigo-100" : "bg-neutral-300"}`} />
@@ -3216,7 +3216,7 @@ export default function App() {
                           ? "bg-emerald-500 text-white border-emerald-600 shadow-xs shadow-emerald-100" 
                           : "bg-indigo-50 text-black border-indigo-200"
                       }`}>
-                        {toBnNum(totalEarnedPoints)} টি সফল টিক্স ({toBnNum(earnedPercentage)}%)
+                        {toBnNum(totalTicksEarned)} টি সফল টিক্স ({toBnNum(earnedPercent)}%)
                       </span>
                     </div>
                   </div>
@@ -3226,7 +3226,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Routine main structured grid table */}
+                {/* Grid Core Table */}
                 <div className="w-full">
                   <table className="w-full border-collapse border border-black text-center">
                     <thead>
