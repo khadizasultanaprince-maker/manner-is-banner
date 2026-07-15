@@ -4,5 +4,8 @@ service cloud.firestore {
     match /routines/{document} {
       allow read, write: if true;
     }
+    match /student_progress/{document} {
+      allow read, write: if true;
+    }
   }
 }

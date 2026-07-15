@@ -52,11 +52,13 @@ import {
   teacherPrompt,
   parentPrompt
 } from "./slidesData";
+import { studentsByClass } from "./studentsData";
 import { 
   collection, 
   onSnapshot, 
   doc, 
   setDoc, 
+  getDoc,
   deleteDoc, 
   serverTimestamp,
   query,
@@ -208,7 +210,7 @@ export default function App() {
   const [themeMode, setThemeMode] = useState<"professional-polish" | "mono-black">("professional-polish");
 
   // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides
-  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides">("routine");
+  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides" | "progress_report">("routine");
 
   // Supabase & Cloud Integrations states
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("supabase_url") || "");
@@ -255,6 +257,47 @@ export default function App() {
   const [certDescription, setCertDescription] = useState(
     "নৈতিক মূল্যবোধ, সৌজন্যবোধ, বিনম্র আচরণ এবং প্রতিদিনের রুটিন অনুযায়ী সময়ের সুপরিকল্পিত ব্যবহারে অত্যন্ত প্রশংসনীয় সাফল্য অর্জনের জন্য এই প্রশংসাপত্র প্রদান করা হলো।"
   );
+
+  // Student progress & Psychological mapping states
+  const [learningStyle, setLearningStyle] = useState("দৃশ্যমান (Visual) - দেখে দেখে");
+  const [behavioralPattern, setBehavioralPattern] = useState("চুপচাপ ও লাজুক");
+  const [confidenceLevel, setConfidenceLevel] = useState("মাঝারি (Mid)");
+  const [keyBarrier, setKeyBarrier] = useState("ভুল করার ভয়");
+  const [hiddenTalent, setHiddenTalent] = useState("ছবি আঁকা");
+  const [customStrategy, setCustomStrategy] = useState("");
+  const [isSavingProgress, setIsSavingProgress] = useState(false);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const [progressSyncMsg, setProgressSyncMsg] = useState("");
+
+  const [competencies, setCompetencies] = useState<any[]>([
+    {
+      id: "1",
+      skillArea: "বাংলা বানান",
+      currentStatus: "৫/১০ ভুল করে, যুক্তবর্ণে সমস্যা",
+      targetGoal: "নির্ভুল বানান ও পড়া",
+      supportType: "ওয়ান-টু-ওয়ান কাউন্সেলিং",
+      progress: "yellow",
+      reviewDate: "২০/১০/২০২৬"
+    },
+    {
+      id: "2",
+      skillArea: "গণিত (ভাগ)",
+      currentStatus: "পদ্ধতি জানে না, নামতা দুর্বল",
+      targetGoal: "১-১০ ঘরের নামতা ও ভাগ করা",
+      supportType: "পিয়ার লার্নিং (বন্ধু শিক্ষা)",
+      progress: "red",
+      reviewDate: "২৫/১০/২০২৬"
+    },
+    {
+      id: "3",
+      skillArea: "ইংরেজি রিডিং",
+      currentStatus: "শব্দ ভেঙে পড়ে, সাবলীল নয়",
+      targetGoal: "সাবলীল শব্দ উচ্চারণ ও রিডিং",
+      supportType: "অডিও ড্রিলিং ও রিডিং অনুশীলন",
+      progress: "green",
+      reviewDate: "১৮/১০/২০২৬"
+    }
+  ]);
 
   // --- Missing/Durable States & Controllers ---
   const [rows, setRows] = useState<DayRow[]>(() => {
@@ -616,6 +659,12 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (studentName && studentClass && studentRoll) {
+      loadStudentProgress(studentClass, studentRoll, studentName);
+    }
+  }, [studentName, studentClass, studentRoll]);
 
   useEffect(() => {
     localStorage.setItem("studentName", studentName);
@@ -1117,6 +1166,114 @@ export default function App() {
     setTimeout(() => {
       handlePrint();
     }, 200);
+  };
+
+  const loadStudentProgress = async (cls: string, roll: string, name: string) => {
+    if (!name || !cls) return;
+    setIsLoadingProgress(true);
+    setProgressSyncMsg("");
+    const formattedClass = cls.trim();
+    const formattedRoll = roll.trim();
+    const formattedName = name.trim();
+    const docId = `${formattedClass}_রোল-${formattedRoll}_${formattedName}`.replace(/[\s./#$[\]]/g, "_");
+    
+    try {
+      const docRef = doc(db, "student_progress", docId);
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.learningStyle !== undefined) setLearningStyle(data.learningStyle);
+        if (data.behavioralPattern !== undefined) setBehavioralPattern(data.behavioralPattern);
+        if (data.confidenceLevel !== undefined) setConfidenceLevel(data.confidenceLevel);
+        if (data.keyBarrier !== undefined) setKeyBarrier(data.keyBarrier);
+        if (data.hiddenTalent !== undefined) setHiddenTalent(data.hiddenTalent);
+        if (data.customStrategy !== undefined) setCustomStrategy(data.customStrategy);
+        if (data.competencies !== undefined) setCompetencies(data.competencies);
+        setProgressSyncMsg("সাফল্যের সাথে এই শিক্ষার্থীর প্রগতি ও মনস্তাত্ত্বিক ডেটা লোড করা হয়েছে।");
+      } else {
+        // Clear or set to default if not found
+        setLearningStyle("দৃশ্যমান (Visual) - দেখে দেখে");
+        setBehavioralPattern("চুপচাপ ও লাজুক");
+        setConfidenceLevel("মাঝারি (Mid)");
+        setKeyBarrier("ভুল করার ভয়");
+        setHiddenTalent("ছবি আঁকা");
+        setCustomStrategy("");
+        setCompetencies([
+          {
+            id: "1",
+            skillArea: "বাংলা বানান",
+            currentStatus: "৫/১০ ভুল করে, যুক্তবর্ণে সমস্যা",
+            targetGoal: "নির্ভুল বানান ও পড়া",
+            supportType: "ওয়ান-টু-ওয়ান কাউন্সেলিং",
+            progress: "yellow",
+            reviewDate: "২০/১০/২০২৬"
+          },
+          {
+            id: "2",
+            skillArea: "গণিত (ভাগ)",
+            currentStatus: "পদ্ধতি জানে না, নামতা দুর্বল",
+            targetGoal: "১-১০ ঘরের নামতা ও ভাগ করা",
+            supportType: "পিয়ার লার্নিং (বন্ধু শিক্ষা)",
+            progress: "red",
+            reviewDate: "২৫/১০/২০২৬"
+          },
+          {
+            id: "3",
+            skillArea: "ইংরেজি রিডিং",
+            currentStatus: "শব্দ ভেঙে পড়ে, সাবলীল নয়",
+            targetGoal: "সাবলীল শব্দ উচ্চারণ ও রিডিং",
+            supportType: "অডিও ড্রিলিং ও রিডিং অনুশীলন",
+            progress: "green",
+            reviewDate: "১৮/১০/২০২৬"
+          }
+        ]);
+        setProgressSyncMsg("এই শিক্ষার্থীর কোনো সংরক্ষিত ক্লাউড প্রগতি রেকর্ড পাওয়া যায়নি। নতুন রেকর্ড শুরু হয়েছে।");
+      }
+    } catch (err) {
+      console.error("Error loading progress:", err);
+      setProgressSyncMsg("ক্লাউড প্রগতি রেকর্ড লোড করতে সমস্যা হয়েছে।");
+    } finally {
+      setIsLoadingProgress(false);
+    }
+  };
+
+  const saveStudentProgress = async () => {
+    if (!studentName || !studentClass) {
+      alert("শিক্ষার্থীর নাম ও শ্রেণী নিশ্চিত করুন।");
+      return;
+    }
+    setIsSavingProgress(true);
+    setProgressSyncMsg("");
+    const formattedClass = studentClass.trim();
+    const formattedRoll = studentRoll.trim();
+    const formattedName = studentName.trim();
+    const docId = `${formattedClass}_রোল-${formattedRoll}_${formattedName}`.replace(/[\s./#$[\]]/g, "_");
+    
+    try {
+      const docRef = doc(db, "student_progress", docId);
+      await setDoc(docRef, {
+        id: docId,
+        studentName: formattedName,
+        studentClass: formattedClass,
+        studentRoll: formattedRoll,
+        learningStyle,
+        behavioralPattern,
+        confidenceLevel,
+        keyBarrier,
+        hiddenTalent,
+        customStrategy,
+        competencies,
+        updatedAt: serverTimestamp()
+      });
+      setProgressSyncMsg("শিক্ষার্থীর প্রগতি ও মনস্তাত্ত্বিক ডেটা সফলভাবে ক্লাউড ডাটাবেইজে সংরক্ষণ করা হয়েছে।");
+      alert("সফলভাবে ক্লাউডে সংরক্ষিত হয়েছে!");
+    } catch (err) {
+      console.error("Error saving progress:", err);
+      setProgressSyncMsg("ক্লাউডে সংরক্ষণ করতে ব্যর্থ হয়েছে।");
+      alert("সংরক্ষণ ব্যর্থ হয়েছে!");
+    } finally {
+      setIsSavingProgress(false);
+    }
   };
 
   const handleCreateNewStudentAndSave = async () => {
@@ -1650,6 +1807,34 @@ export default function App() {
                   id="student-name-field"
                 />
               </div>
+
+              {/* School DB student selector dropdown */}
+              {studentsByClass[studentClass] && studentsByClass[studentClass].length > 0 && (
+                <div className="bg-indigo-50/30 p-2.5 rounded-lg border border-indigo-100">
+                  <label className="block text-xs font-black text-indigo-700 mb-1 flex items-center gap-1">
+                    <span>🏫</span> {studentClass} শ্রেণির ডাটাবেজ থেকে সিলেক্ট করুন:
+                  </label>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        const [roll, name] = val.split("::");
+                        setStudentName(name);
+                        setStudentRoll(roll);
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-sm bg-white border border-indigo-200 rounded-lg focus:bg-white focus:border-indigo-600 outline-none transition font-semibold text-indigo-950"
+                  >
+                    <option value="">-- শিক্ষার্থী নির্বাচন করুন ({toBnNum(studentsByClass[studentClass].length)} জন) --</option>
+                    {studentsByClass[studentClass].map(stud => (
+                      <option key={stud.roll + stud.name} value={`${stud.roll}::${stud.name}`}>
+                        রোল: {toBnNum(stud.roll)} — {stud.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -2188,6 +2373,18 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setActiveTab("progress_report")}
+              className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === "progress_report"
+                  ? "bg-black text-white shadow border border-purple-300"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <UserCheck className="w-4 h-4 text-purple-500" />
+              <span>৩. 🎯 মনস্তাত্ত্বিক ও প্রগতি ম্যাপিং</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab("summary")}
               className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === "summary"
@@ -2196,7 +2393,7 @@ export default function App() {
               }`}
             >
               <BarChart2 className="w-4 h-4 text-indigo-500" />
-              <span>৩. 📊 প্রগতি রিপোর্ট ও পরিসংখ্যান</span>
+              <span>৪. 📊 প্রগতি রিপোর্ট ও পরিসংখ্যান</span>
             </button>
 
             <button
@@ -2208,7 +2405,7 @@ export default function App() {
               }`}
             >
               <ClipboardList className="w-4 h-4 text-rose-500" />
-              <span>৪. 📋 অভিভাবক সভা ইভেন্ট প্ল্যান</span>
+              <span>৫. 📋 অভিভাবক সভা ইভেন্ট প্ল্যান</span>
             </button>
 
             <button
@@ -2220,7 +2417,7 @@ export default function App() {
               }`}
             >
               <Monitor className="w-4 h-4 text-purple-500" />
-              <span>৫. 🖥️ অভিভাবক সভা স্লাইড শো</span>
+              <span>৬. 🖥️ অভিভাবক সভা স্লাইড শো</span>
             </button>
 
             <button
@@ -2232,7 +2429,7 @@ export default function App() {
               }`}
             >
               <Database className="w-4 h-4 text-emerald-500" />
-              <span>৬. 🔌 ক্লাউড ও হোস্টিং প্যানেল</span>
+              <span>৭. 🔌 ক্লাউড ও হোস্টিং প্যানেল</span>
               <span className="text-[9px] bg-emerald-100 text-emerald-700 font-extrabold px-1.5 py-0.2 rounded animate-pulse">
                 যুক্ত করুন
               </span>
@@ -2379,6 +2576,480 @@ export default function App() {
               </button>
             </div>
           )}
+
+          {activeTab === "progress_report" && (() => {
+            const getPsychologyGuideline = () => {
+              const guidelines: string[] = [];
+              
+              if (learningStyle.includes("दृश्यমান") || learningStyle.includes("Visual")) {
+                guidelines.push("দৃশ্যমান কৌশল: ক্লাসে রঙিন চার্ট, রঙিন ফ্ল্যাশকার্ড ও চিত্রভিত্তিক উপায়ে পড়া বা লেখার উপস্থাপন নিশ্চিত করুন। মাল্টিমিডিয়া ক্লাসে শিক্ষামূলক ভিডিও দেখান।");
+              } else if (learningStyle.includes("श्रवण") || learningStyle.includes("Auditory")) {
+                guidelines.push("শ্রবণ কৌশল: ছড়ার সুরে ছন্দ মিলিয়ে মুখস্থ করা এবং ক্লাসে উচ্চস্বরে পড়ার অভ্যাস তৈরি করুন। প্রয়োজনে অডিও বা গল্পের ছলে বিষয়বস্তু বুঝিয়ে বলুন।");
+              } else if (learningStyle.includes("স্পর্শ") || learningStyle.includes("Kinesthetic")) {
+                guidelines.push("স্পর্শভিত্তিক কৌশল: বাস্তব উপকরণের (যেমন: ব্লক, কাঠি, কাস্টম মডিউল) সাহায্যে হাতে-কলমে অনুশীলন করান। খেলার ছলে শিখন নিশ্চিত করুন।");
+              } else {
+                guidelines.push("বহুমুখী কৌশল: অডিও-ভিজুয়াল মাল্টিমিডিয়া প্রেজেন্টেশন ও ড্রিলিং একসাথে সমন্বয় করে বাস্তবসম্মত শিখন দিন।");
+              }
+              
+              if (behavioralPattern.includes("লাজুক") || behavioralPattern.includes("চুপচাপ")) {
+                guidelines.push("আচরণ কৌশল: ক্লাসে ছোট ছোট সহজ প্রশ্ন জিজ্ঞাসা করুন এবং উত্তর দিলে বেশি বেশি প্রশংসা করে জড়তা কাটান। ৫-৬ জনের গ্রুপ ওয়ার্কে অংশ নেওয়ার সুযোগ দিন।");
+              } else if (behavioralPattern.includes("চঞ্চল")) {
+                guidelines.push("আচরণ কৌশল: শিক্ষার্থীকে কোনো দায়িত্বশীল কাজ (যেমন: বোর্ড মোছা বা চক বিতরণ) দিয়ে ব্যস্ত রাখুন। পড়ার সেশনে ছোট ছোট বিরতি ও রিওয়ার্ড দিন।");
+              } else if (behavioralPattern.includes("মনোযোগী")) {
+                guidelines.push("আচরণ কৌশল: ক্লাসে তাকে পিয়ার লিডার বা গ্রুপ মনিটর বানিয়ে অন্য বন্ধুদের সাহায্য করার সুযোগ দিন, যা তার দায়িত্বশীলতাকে আরও বৃদ্ধি করবে।");
+              } else {
+                guidelines.push("আচরণ কৌশল: সামনের সারিতে বসান, ঘন ঘন চোখের কন্টাক্ট রাখুন এবং প্রতিটি ছোট মনোযোগমূলক কাজের জন্য তাৎক্ষণিক উৎসাহ দিন।");
+              }
+              
+              if (keyBarrier.includes("ভুল")) {
+                guidelines.push("বাধা দূরীকরণ: ভুল হওয়াকে ভীতি হিসেবে না দেখিয়ে 'ভুলই শিক্ষার প্রথম ধাপ' হিসেবে অভয় দিন। ক্লাসে স্বতঃস্ফূর্ত অংশগ্রহণে উৎসাহ দিন।");
+              } else if (keyBarrier.includes("মনোযোগ")) {
+                guidelines.push("বাধা দূরীকরণ: ফোকাসিং টাইম ১৫ মিনিটের বেশি করবেন না। পড়ার ফাঁকে ৩-৫ মিনিটের কগনিটিভ পাজল বা ট্র্যাকিং টাস্ক ব্যবহার করুন।");
+              } else if (keyBarrier.includes("ভীতি")) {
+                guidelines.push("বাধা দূরীকরণ: ভীতি দূর করতে প্রতিদিন ৫-১০ মিনিট হাসিমুখে বিষয়ভিত্তিক ধারণা সহজ খেলার ছলে চর্চা করান। কঠিন শব্দ সহজ করে ভাঙুন।");
+              } else {
+                guidelines.push("বাধা দূরীকরণ: প্রতিদিনের কাজের জন্য ক্ষুদ্র ও পরিমাপযোগ্য লক্ষ্য (যেমন: ১টি বানান মুখস্থ) নির্ধারণ করুন এবং লক্ষ্য পূরণ হলে স্টার দিন।");
+              }
+              
+              return guidelines;
+            };
+
+            return (
+              <div className="w-full flex flex-col items-center">
+                {/* Top Banner Alert (Hidden on Print) */}
+                <div className="no-print w-full max-w-[21cm] mb-4 bg-gradient-to-r from-purple-700 via-indigo-750 to-indigo-900 p-4 rounded-xl text-white shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center text-white shrink-0 border border-white/20">
+                      <UserCheck className="w-5 h-5 text-purple-150 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black">🎯 মনস্তাত্ত্বিক ম্যাপিং ও দক্ষতা-ভিত্তিক প্রগতি ট্র্যাকার প্যানেল</h4>
+                      <p className="text-xs text-purple-100 mt-1">
+                        ডি-লিকন মডেল স্কুলের শিক্ষার্থীদের লার্নিং প্রোফাইল বিশ্লেষণ করুন, এলগরিদম ভিত্তিক কৌশল গ্রহণ করুন এবং ক্লাউড ডাটাবেইজে সংরক্ষণ করুন।
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={saveStudentProgress}
+                      disabled={isSavingProgress}
+                      className="bg-emerald-650 hover:bg-emerald-700 text-white text-xs font-black px-4 py-2.5 rounded-lg transition active:scale-95 cursor-pointer shadow flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <CheckSquare className="w-4 h-4" />
+                      <span>{isSavingProgress ? "সংরক্ষণ হচ্ছে..." : "ক্লাউডে সেভ করুন"}</span>
+                    </button>
+                    <button
+                      onClick={handlePrint}
+                      className="bg-white hover:bg-slate-100 text-indigo-950 text-xs font-black px-4 py-2.5 rounded-lg transition active:scale-95 cursor-pointer shadow flex items-center gap-1.5"
+                    >
+                      <FileText className="w-4 h-4 text-indigo-600" />
+                      <span>প্রিন্ট করুন (A4)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {progressSyncMsg && (
+                  <div className="no-print w-full max-w-[21cm] mb-4 px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-900 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-indigo-600 animate-pulse" />
+                    <span>{progressSyncMsg}</span>
+                  </div>
+                )}
+
+                {/* Printable Progress Report Container (A4 Formatted) */}
+                <div 
+                  className="w-full max-w-[21cm] bg-white border border-gray-250 p-8 rounded-xl shadow-md flex flex-col print:border-none print:shadow-none print:p-0 print:m-0"
+                  id="printable-progress-report-card"
+                >
+                  {/* School Header */}
+                  <div className="text-center pb-5 border-b-2 border-indigo-950 mb-6 relative font-sans">
+                    <div className="absolute top-0 right-0 text-right text-[10px] text-gray-500 font-mono no-print">
+                      Form Ref: DLS-MAP-2026
+                    </div>
+                    <h1 className="text-2xl font-black tracking-tight text-slate-900">ডি-লিকন মডেল স্কুল</h1>
+                    <p className="text-xs font-bold text-slate-600 mt-1 uppercase tracking-widest">
+                      শিষ্টাচার, শুদ্ধাচার ও নৈতিক চরিত্র প্রজেক্ট — ২০২৬
+                    </p>
+                    <div className="mt-3 inline-block bg-indigo-950 text-white text-xs font-black px-4 py-1.5 rounded-full">
+                      📊 শিক্ষার্থী লার্নিং প্রোফাইল, মনস্তাত্ত্বিক ম্যাপিং ও প্রগতি রিপোর্ট
+                    </div>
+                  </div>
+
+                  {/* Student Metadata Segment */}
+                  <div className="grid grid-cols-4 gap-4 bg-slate-50 border border-slate-200 p-4 rounded-lg mb-6 font-sans">
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-slate-500">শিক্ষার্থীর নাম</span>
+                      <span className="text-sm font-black text-slate-900">{studentName || "—নির্ধারণ করুন—"}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-slate-500">শ্রেণি / শাখা</span>
+                      <span className="text-sm font-black text-slate-900">{studentClass || "—নির্ধারণ করুন—"}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-slate-500">রোল নম্বর</span>
+                      <span className="text-sm font-black text-slate-950">{toBnNum(studentRoll) || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase font-bold text-slate-500">রিপোর্ট সময়</span>
+                      <span className="text-xs font-semibold text-slate-700">{new Date().toLocaleDateString("bn-BD")} ইং</span>
+                    </div>
+                  </div>
+
+                  {/* SECTION 1: Learning Profile & Psychological Mapping */}
+                  <div className="mb-6 font-sans">
+                    <h3 className="text-sm font-bold text-slate-900 border-l-4 border-indigo-600 pl-2.5 mb-4 flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-indigo-700" />
+                      <span>১. শিক্ষার্থী লার্নিং প্রোফাইল ও মনস্তাত্ত্বিক ম্যাপিং (Learning Profile & Psychology)</span>
+                    </h3>
+
+                    {/* Selector Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+                      {/* Style Selection */}
+                      <div className="bg-white border border-gray-200 p-3.5 rounded-lg shadow-sm">
+                        <label className="block text-xs font-black text-indigo-900 mb-1.5 flex items-center gap-1">
+                          <span>💡</span> লার্নিং স্টাইল (Learning Style)
+                        </label>
+                        <select
+                          value={learningStyle}
+                          onChange={(e) => setLearningStyle(e.target.value)}
+                          className="no-print w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-650 transition font-bold"
+                        >
+                          <option value="দৃশ্যমান (Visual) - দেখে দেখে">দৃশ্যমান (Visual) - দেখে দেখে</option>
+                          <option value="শ্রবণ (Auditory) - শুনে শুনে">শ্রবণ (Auditory) - শুনে শুনে</option>
+                          <option value="স্পর্শভিত্তিক (Kinesthetic) - হাতে-কলমে">স্পর্শভিত্তিক (Kinesthetic) - হাতে-কলমে</option>
+                          <option value="মিশ্র (Mixed) - বহুমুখী">মিশ্র (Mixed) - বহুমুখী</option>
+                        </select>
+                        <div className="print-only text-xs font-black text-slate-900 mt-1">
+                          {learningStyle}
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                          শিক্ষার্থী কোন ইনপুট মোডে সবচেয়ে সহজে নতুন তথ্য আত্মস্থ করে।
+                        </p>
+                      </div>
+
+                      {/* Behavioral Pattern Selection */}
+                      <div className="bg-white border border-gray-200 p-3.5 rounded-lg shadow-sm">
+                        <label className="block text-xs font-black text-indigo-900 mb-1.5 flex items-center gap-1">
+                          <span>🎭</span> আচরণগত প্যাটার্ন (Behavioral Pattern)
+                        </label>
+                        <select
+                          value={behavioralPattern}
+                          onChange={(e) => setBehavioralPattern(e.target.value)}
+                          className="no-print w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-650 transition font-bold"
+                        >
+                          <option value="চুপচাপ ও লাজুক">চুপচাপ ও লাজুক</option>
+                          <option value="অতি চঞ্চল ও ছটফটে">অতি চঞ্চল ও ছটফটে</option>
+                          <option value="মনোযোগী ও বিনয়ী">মনোযোগী ও বিনয়ী</option>
+                          <option value="সহজেই অমনোযোগী">সহজেই অমনোযোগী</option>
+                        </select>
+                        <div className="print-only text-xs font-black text-slate-900 mt-1">
+                          {behavioralPattern}
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                          শ্রেণীকক্ষে শিক্ষার্থীর সাধারণ মনোযোগ ও ক্রিয়া-প্রতিক্রিয়া স্বভাব।
+                        </p>
+                      </div>
+
+                      {/* Confidence Selection */}
+                      <div className="bg-white border border-gray-200 p-3.5 rounded-lg shadow-sm">
+                        <label className="block text-xs font-black text-indigo-900 mb-1.5 flex items-center gap-1">
+                          <span>💪</span> আত্মবিশ্বাস স্তর (Confidence Level)
+                        </label>
+                        <select
+                          value={confidenceLevel}
+                          onChange={(e) => setConfidenceLevel(e.target.value)}
+                          className="no-print w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-650 transition font-bold"
+                        >
+                          <option value="খুব কম (Low) - ভীত">খুব কম (Low) - ভীত</option>
+                          <option value="মাঝারি (Mid) - স্বাভাবিক">মাঝারি (Mid) - স্বাভাবিক</option>
+                          <option value="উচ্চ (High) - সাহসী ও স্বতঃস্ফূর্ত">উচ্চ (High) - সাহসী ও স্বতঃস্ফূর্ত</option>
+                        </select>
+                        <div className="print-only text-xs font-black text-slate-900 mt-1">
+                          {confidenceLevel}
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                          নতুন চ্যালেঞ্জ গ্রহণ এবং ভুল করার ক্ষেত্রে শিক্ষার্থীর মানসিক সহনশীলতা ও ভীতি।
+                        </p>
+                      </div>
+
+                      {/* Key Barrier Selection */}
+                      <div className="bg-white border border-gray-200 p-3.5 rounded-lg shadow-sm">
+                        <label className="block text-xs font-black text-indigo-900 mb-1.5 flex items-center gap-1">
+                          <span>🚧</span> প্রধান শিখন বাধা (Key Barrier)
+                        </label>
+                        <select
+                          value={keyBarrier}
+                          onChange={(e) => setKeyBarrier(e.target.value)}
+                          className="no-print w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-650 transition font-bold"
+                        >
+                          <option value="ভুল করার ভয়">ভুল করার ভয়</option>
+                          <option value="মনোযোগের অভাব">মনোযোগের অভাব</option>
+                          <option value="বিষয়ভিত্তিক ভীতি (যেমন: গণিত বা ইংরেজি)">বিষয়ভিত্তিক ভীতি (যেমন: গণিত বা ইংরেজি)</option>
+                          <option value="অলসতা ও ধীর স্বভাব">অলসতা ও ধীর স্বভাব</option>
+                        </select>
+                        <div className="print-only text-xs font-black text-slate-900 mt-1">
+                          {keyBarrier}
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                          শিক্ষার্থীর শিখন যাত্রার মূল মনস্তাত্ত্বিক বাধা যা তাকে এগিয়ে যেতে মন্থর করে।
+                        </p>
+                      </div>
+
+                      {/* Hidden Talent Selection */}
+                      <div className="bg-white border border-gray-200 p-3.5 rounded-lg shadow-sm">
+                        <label className="block text-xs font-black text-indigo-900 mb-1.5 flex items-center gap-1">
+                          <span>🌟</span> লুকানো প্রতিভা (Hidden Talent)
+                        </label>
+                        <select
+                          value={hiddenTalent}
+                          onChange={(e) => setHiddenTalent(e.target.value)}
+                          className="no-print w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-gray-200 rounded-lg outline-none focus:border-indigo-650 transition font-bold"
+                        >
+                          <option value="ছবি আঁকা ও আর্ট">ছবি আঁকা ও আর্ট</option>
+                          <option value="চমৎকার কথা বলা ও বক্তব্য">চমৎকার কথা বলা ও বক্তব্য</option>
+                          <option value="খেলাধুলা ও শারীরিক কসরত">খেলাধুলা ও শারীরিক কসরত</option>
+                          <option value="গান গাওয়া ও সঙ্গীত">গান গাওয়া ও সঙ্গীত</option>
+                          <option value="নেতৃত্ব দেওয়ার অসাধারণ ক্ষমতা">নেতৃত্ব দেওয়ার অসাধারণ ক্ষমতা</option>
+                        </select>
+                        <div className="print-only text-xs font-black text-slate-900 mt-1">
+                          {hiddenTalent}
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                          শিক্ষার্থীর সুপ্ত প্রতিভা যা প্রশংসা ও উদ্দীপনার মাধ্যমে অন্যান্য বিষয়ের ভীতি দূর করতে সহায়ক।
+                        </p>
+                      </div>
+
+                      {/* Algorithm Status Check */}
+                      <div className="bg-indigo-50 border border-indigo-150 p-3.5 rounded-lg flex flex-col justify-between">
+                        <div>
+                          <span className="text-[10px] uppercase font-extrabold text-indigo-700 tracking-wider font-mono">INFERENCE ENGINE</span>
+                          <div className="text-xs font-black text-indigo-900 mt-1 flex items-center gap-1.5">
+                            <span>⚙️</span> প্রজেক্ট এলগরিদম সক্রিয়
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-indigo-950 mt-1 leading-relaxed italic">
+                          পছন্দকৃত বৈশিষ্ট্যের উপর ভিত্তি করে নিচে রিয়েল-টাইম কাস্টম গাইডলাইন ও থেরাপিউটিক কৌশল প্রস্তুত হচ্ছে।
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* ALGORITHM-BASED INFERRED INSTRUCTIONS */}
+                    <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-5 mb-5">
+                      <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                        <span>⚡</span> এলগরিদম জেনারেটেড কৌশলগত নির্দেশনা (Recommended Action Plan):
+                      </h4>
+                      <div className="space-y-2.5 text-xs text-indigo-950 leading-relaxed font-bold">
+                        {getPsychologyGuideline().map((guide, idx) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <span className="text-indigo-600 mt-0.5 shrink-0">✔</span>
+                            <span>{guide}</span>
+                          </div>
+                        ))}
+                        <div className="flex items-start gap-2">
+                          <span className="text-indigo-600 mt-0.5 shrink-0">✔</span>
+                          <span>সুপ্ত প্রতিভার উদ্দীপনা: শিক্ষার্থীর <strong>"{hiddenTalent}"</strong> প্রতিভার স্বতঃস্ফূর্ত প্রশংসা করুন। পাঠদান শুরুর আগে অথবা রিওয়ার্ড হিসেবে তাকে এই সুপ্ত শৈলী উপস্থাপনের সুযোগ দিলে তার জড়তা ও শিখন ভীতি দ্রুত দূর হবে।</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Custom Comments Form */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <label className="block text-xs font-black text-slate-700 mb-1.5">
+                        ✍️ শিক্ষকের বিশেষ পর্যবেক্ষণ, অতিরিক্ত মন্তব্য ও ভবিষ্যৎ অ্যাকশন প্ল্যান:
+                      </label>
+                      <textarea
+                        value={customStrategy}
+                        onChange={(e) => setCustomStrategy(e.target.value)}
+                        className="no-print w-full px-3 py-2 text-xs bg-slate-50 border border-gray-200 rounded-lg outline-none focus:bg-white focus:border-black transition h-16 resize-none font-medium"
+                        placeholder="যেমন: শিক্ষার্থীটি খুবই সম্ভাবনাময়। তবে গণিতের ভীতি কাটাতে ক্লাসে ওয়ান-টু-ওয়ান গাইডেন্স দেওয়া প্রয়োজন। অভিভাবকদের সাথে নিবিড় যোগাযোগ দরকার।"
+                      />
+                      <div className="print-only text-xs text-slate-800 leading-relaxed whitespace-pre-line border-l-2 border-slate-300 pl-3">
+                        {customStrategy || "বিশেষ কোনো অতিরিক্ত মন্তব্য নেই। উপরে বর্ণিত এলগরিদম জেনারেটেড কৌশলগত নির্দেশনা কঠোরভাবে অনুসরণের পরামর্শ রইল।"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: Competency Tracker */}
+                  <div className="font-sans">
+                    <h3 className="text-sm font-bold text-slate-900 border-l-4 border-indigo-600 pl-2.5 mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-indigo-700" />
+                        <span>২. দক্ষতা-ভিত্তিক প্রগতি ট্র্যাকার (Competency & Goal Tracker)</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setCompetencies(prev => [
+                            ...prev,
+                            {
+                              id: Date.now().toString(),
+                              skillArea: "",
+                              currentStatus: "",
+                              targetGoal: "",
+                              supportType: "",
+                              progress: "yellow",
+                              reviewDate: new Date().toLocaleDateString("bn-BD")
+                            }
+                          ]);
+                        }}
+                        className="no-print text-xs font-black text-indigo-600 hover:text-indigo-850 flex items-center gap-1 border border-indigo-200 px-2.5 py-1 rounded-lg bg-indigo-50/50 hover:bg-indigo-50 active:scale-95 cursor-pointer shadow-sm"
+                      >
+                        <span>➕</span> নতুন রো যোগ করুন
+                      </button>
+                    </h3>
+
+                    {/* Competency Table */}
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 border-b border-gray-200 text-slate-700 font-bold">
+                            <th className="p-3 w-[18%] text-slate-900 font-black">বিষয় / দক্ষতা ক্ষেত্র</th>
+                            <th className="p-3 w-[25%] text-slate-900 font-black">বর্তমান অবস্থা ও দুর্বলতা</th>
+                            <th className="p-3 w-[25%] text-slate-900 font-black">মাসিক লক্ষ্য ও টার্গেট</th>
+                            <th className="p-3 w-[18%] text-slate-900 font-black">সহায়তা ধরন</th>
+                            <th className="p-3 w-[10%] text-center text-slate-900 font-black">প্রগতি সূচক</th>
+                            <th className="p-3 w-[4%] text-center text-slate-900 font-black no-print">অ্যাকশন</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {competencies.map((item) => (
+                            <tr key={item.id} className="border-b border-gray-200 hover:bg-slate-50/50 transition">
+                              {/* Skill Area */}
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.skillArea}
+                                  onChange={(e) => {
+                                    const text = e.target.value;
+                                    setCompetencies(prev => prev.map(c => c.id === item.id ? { ...c, skillArea: text } : c));
+                                  }}
+                                  className="no-print w-full px-2 py-1 border border-gray-200 bg-slate-50 rounded focus:bg-white outline-none font-bold text-slate-800"
+                                  placeholder="যেমন: বাংলা বানান"
+                                />
+                                <span className="print-only font-bold text-slate-900">{item.skillArea || "—"}</span>
+                              </td>
+
+                              {/* Current Status */}
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.currentStatus}
+                                  onChange={(e) => {
+                                    const text = e.target.value;
+                                    setCompetencies(prev => prev.map(c => c.id === item.id ? { ...c, currentStatus: text } : c));
+                                  }}
+                                  className="no-print w-full px-2 py-1 border border-gray-200 bg-slate-50 rounded focus:bg-white outline-none text-slate-700 font-medium"
+                                  placeholder="যেমন: ৫/১০ টি ভুল করে"
+                                />
+                                <span className="print-only text-slate-800">{item.currentStatus || "—"}</span>
+                              </td>
+
+                              {/* Target Goal */}
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.targetGoal}
+                                  onChange={(e) => {
+                                    const text = e.target.value;
+                                    setCompetencies(prev => prev.map(c => c.id === item.id ? { ...c, targetGoal: text } : c));
+                                  }}
+                                  className="no-print w-full px-2 py-1 border border-gray-200 bg-slate-50 rounded focus:bg-white outline-none text-slate-700 font-medium"
+                                  placeholder="যেমন: নির্ভুল রিডিং ও বানান"
+                                />
+                                <span className="print-only text-slate-800">{item.targetGoal || "—"}</span>
+                              </td>
+
+                              {/* Support Type */}
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.supportType}
+                                  onChange={(e) => {
+                                    const text = e.target.value;
+                                    setCompetencies(prev => prev.map(c => c.id === item.id ? { ...c, supportType: text } : c));
+                                  }}
+                                  className="no-print w-full px-2 py-1 border border-gray-200 bg-slate-50 rounded focus:bg-white outline-none text-slate-700 font-medium"
+                                  placeholder="যেমন: ওয়ান-টু-ওয়ান গাইড"
+                                />
+                                <span className="print-only text-slate-800">{item.supportType || "—"}</span>
+                              </td>
+
+                              {/* Progress Indicator */}
+                              <td className="p-2 text-center">
+                                <div className="no-print flex items-center justify-center gap-1 bg-white p-1 rounded border border-gray-150">
+                                  <button
+                                    onClick={() => {
+                                      setCompetencies(prev => prev.map(c => c.id === item.id ? { ...c, progress: "red" } : c));
+                                    }}
+                                    className={`w-3 h-3 rounded-full transition ${item.progress === "red" ? "bg-red-500 scale-125 ring-2 ring-red-300" : "bg-red-200 hover:bg-red-300"}`}
+                                    title="লাল = কোনো উন্নতি নেই"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      setCompetencies(prev => prev.map(c => c.id === item.id ? { ...c, progress: "yellow" } : c));
+                                    }}
+                                    className={`w-3 h-3 rounded-full transition ${item.progress === "yellow" ? "bg-yellow-400 scale-125 ring-2 ring-yellow-200" : "bg-yellow-100 hover:bg-yellow-200"}`}
+                                    title="হলুদ = মার্থর উন্নতি"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      setCompetencies(prev => prev.map(c => c.id === item.id ? { ...c, progress: "green" } : c));
+                                    }}
+                                    className={`w-3 h-3 rounded-full transition ${item.progress === "green" ? "bg-green-500 scale-125 ring-2 ring-green-300" : "bg-green-200 hover:bg-green-300"}`}
+                                    title="সবুজ = লক্ষ্য অর্জিত"
+                                  />
+                                </div>
+                                <div className="print-only flex justify-center">
+                                  {item.progress === "green" && <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[10px] font-black border border-green-300">🟢 অর্জিত</span>}
+                                  {item.progress === "yellow" && <span className="bg-yellow-50 text-yellow-800 px-2 py-0.5 rounded-full text-[10px] font-black border border-yellow-200">🟡 চলমান</span>}
+                                  {item.progress === "red" && <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-[10px] font-black border border-red-300">🔴 অপরিবর্তিত</span>}
+                                </div>
+                              </td>
+
+                              {/* Actions (Hidden on Print) */}
+                              <td className="p-2 text-center no-print">
+                                <button
+                                  onClick={() => {
+                                    setCompetencies(prev => prev.filter(c => c.id !== item.id));
+                                  }}
+                                  className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition active:scale-90 cursor-pointer"
+                                  title="ডিলিট করুন"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Printable Signature block */}
+                  <div className="mt-12 grid grid-cols-3 gap-6 text-center print:mt-16 font-sans">
+                    <div className="border-t border-slate-300 pt-3">
+                      <span className="block text-[11px] font-black text-slate-800">শ্রেণি শিক্ষকের স্বাক্ষর</span>
+                      <span className="text-[9px] text-slate-500 font-medium">তারিখসহ স্বাক্ষর</span>
+                    </div>
+                    <div className="border-t border-slate-300 pt-3 flex flex-col items-center justify-center">
+                      <span className="text-[10px] font-black text-emerald-700 border border-emerald-300 bg-emerald-50 px-2 py-0.5 rounded mb-1">
+                        অনুমোদিত ও ভেরিফাইড
+                      </span>
+                      <span className="block text-[11px] font-black text-slate-900">{principalName}</span>
+                      <span className="text-[9px] text-slate-500 font-medium">ডি-লিকন মডেল স্কুল</span>
+                    </div>
+                    <div className="border-t border-slate-300 pt-3">
+                      <span className="block text-[11px] font-black text-slate-800">অভিভাবকের মন্তব্য ও দস্তখত</span>
+                      <span className="text-[9px] text-slate-500 font-medium">স্বাক্ষর ও তারিখ</span>
+                    </div>
+                  </div>
+
+                  {/* Inner Guidelines footer */}
+                  <div className="mt-8 pt-4 border-t border-slate-100 text-[10px] text-slate-400 text-center leading-relaxed">
+                    ডি-লিকন মডেল স্কুল প্রগতি ম্যাপিং প্রোটোকল ২০২৬। শিক্ষক, শিক্ষার্থী ও অভিভাবকদের যৌথ সক্রিয় তদারকিতেই কেবল কাঙ্ক্ষিত নৈতিক ও বুদ্ধিবৃত্তিক বিকাশ সম্ভব।
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {activeTab === "summary" && (
             <div className="no-print w-full max-w-[21cm] mb-4 bg-gradient-to-r from-teal-600 via-indigo-600 to-violet-700 p-4 rounded-xl text-white shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
