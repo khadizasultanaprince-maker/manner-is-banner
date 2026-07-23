@@ -40,10 +40,15 @@ import {
   Monitor,
   ChevronLeft,
   Activity,
-  Tablet
+  Tablet,
+  Bell,
+  AlarmClock,
+  BellRing
 } from "lucide-react";
 import { db } from "./firebase";
 import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
+import StudentDashboard from "./components/StudentDashboard";
+import AuthPortal from "./components/AuthPortal";
 import {
   slidesForStudents,
   slidesForTeachers,
@@ -82,6 +87,16 @@ function toBnNum(num: number | string): string {
     .join("");
 }
 
+// Convert Bengali digits to English digits
+function fromBnNum(str: string | number): string {
+  if (str === undefined || str === null) return "";
+  const bnToEnMap: Record<string, string> = {
+    "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
+    "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9"
+  };
+  return str.toString().replace(/[০-৯]/g, (w) => bnToEnMap[w] || w);
+}
+
 // Helper to get React element for icons in slides
 const getSlideIcon = (name: string, className = "w-5 h-5") => {
   switch (name) {
@@ -117,6 +132,61 @@ const PRESET_MONTHS = [
   "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", 
   "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"
 ];
+
+// Get current date details in Bengali format automatically
+function getCurrentCalendarDefaults() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthIdx = now.getMonth();
+  const monthName = PRESET_MONTHS[monthIdx] || "জানুয়ারি";
+  const yearBn = toBnNum(year);
+  const selectedMonth = `${monthName} ${yearBn}`;
+  
+  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+  const jsDay = new Date(year, monthIdx, 1).getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const startDayIndex = (jsDay + 1) % 7; // Saturday = 0, Sunday = 1, etc.
+  const todayDate = now.getDate();
+  
+  return {
+    selectedMonth,
+    daysCount: daysInMonth,
+    startDayIndex,
+    todayDate,
+    currentYear: year,
+    currentMonthIdx: monthIdx,
+    yearBn
+  };
+}
+
+// Calculate exact days & start weekday for any month/year string
+function getMonthCalendarConfig(monthStr: string) {
+  const cleanStr = monthStr.trim();
+  const enStr = fromBnNum(cleanStr);
+  
+  const yearMatch = enStr.match(/\b(20\d\d)\b/);
+  const year = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+  
+  let monthIdx = new Date().getMonth();
+  for (let i = 0; i < PRESET_MONTHS.length; i++) {
+    if (cleanStr.includes(PRESET_MONTHS[i])) {
+      monthIdx = i;
+      break;
+    }
+  }
+  
+  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+  const jsDay = new Date(year, monthIdx, 1).getDay();
+  const startDayIndex = (jsDay + 1) % 7;
+  
+  return {
+    daysCount: daysInMonth,
+    startDayIndex,
+    year,
+    monthIdx,
+    monthName: PRESET_MONTHS[monthIdx],
+    yearBn: toBnNum(year)
+  };
+}
 
 const SCHOOL_CLASSES = [
   "প্লে", "নার্সারি", "কেজি", "প্রথম", "দ্বিতীয়", "তৃতীয়", "চতুর্থ", "পঞ্চম", "ষষ্ঠ", "সপ্তম", "অষ্টম", "নবম", "দশম"
@@ -182,14 +252,49 @@ interface DayRow {
 }
 
 export default function App() {
+  // Real-time current calendar defaults
+  const currentCal = useMemo(() => getCurrentCalendarDefaults(), []);
+
   // --- Persistent & Local States ---
   const [studentName, setStudentName] = useState(() => localStorage.getItem("studentName") || "আহমেদ হাসান");
   const [studentClass, setStudentClass] = useState(() => localStorage.getItem("studentClass") || "পঞ্চম শ্রেণী");
   const [studentRoll, setStudentRoll] = useState(() => localStorage.getItem("studentRoll") || "০৫");
-  const [selectedMonth, setSelectedMonth] = useState(() => localStorage.getItem("selectedMonth") || "জানুয়ারি ২০২৬");
+  const [selectedMonth, setSelectedMonth] = useState(() => localStorage.getItem("selectedMonth") || currentCal.selectedMonth);
   
-  const [daysCount, setDaysCount] = useState<number>(() => Number(localStorage.getItem("daysCount")) || 31);
-  const [startDayIndex, setStartDayIndex] = useState<number>(() => Number(localStorage.getItem("startDayIndex")) || 3); // Wednesday
+  const [daysCount, setDaysCount] = useState<number>(() => Number(localStorage.getItem("daysCount")) || currentCal.daysCount);
+  const [startDayIndex, setStartDayIndex] = useState<number>(() => Number(localStorage.getItem("startDayIndex")) || currentCal.startDayIndex);
+
+  const handleMonthInputChange = (val: string) => {
+    setSelectedMonth(val);
+    if (val.trim()) {
+      const config = getMonthCalendarConfig(val);
+      setDaysCount(config.daysCount);
+      setStartDayIndex(config.startDayIndex);
+    }
+  };
+
+  const handlePresetMonthClick = (m: string) => {
+    const enStr = fromBnNum(selectedMonth);
+    const yearMatch = enStr.match(/\b(20\d\d)\b/);
+    const yearBn = yearMatch ? toBnNum(yearMatch[1]) : currentCal.yearBn;
+    const newMonthStr = `${m} ${yearBn}`;
+    
+    setSelectedMonth(newMonthStr);
+    const config = getMonthCalendarConfig(newMonthStr);
+    setDaysCount(config.daysCount);
+    setStartDayIndex(config.startDayIndex);
+  };
+
+  const handleSetCurrentMonth = () => {
+    const current = getCurrentCalendarDefaults();
+    setSelectedMonth(current.selectedMonth);
+    setDaysCount(current.daysCount);
+    setStartDayIndex(current.startDayIndex);
+  };
+
+  const isViewingCurrentMonth = useMemo(() => {
+    return selectedMonth.trim() === currentCal.selectedMonth.trim();
+  }, [selectedMonth, currentCal]);
 
   // Header Titles (Customizable values)
   const [col1Header, setCol1Header] = useState(() => localStorage.getItem("col1Header") || "১। নামাজের জন্য ঘুম জাগা ০৪:৩০");
@@ -209,8 +314,45 @@ export default function App() {
   const [density, setDensity] = useState<"compact" | "normal" | "spacious">("compact");
   const [themeMode, setThemeMode] = useState<"professional-polish" | "mono-black">("professional-polish");
 
-  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides
-  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides" | "progress_report">("routine");
+  // Global Authentication Role State: null | "student" | "master" | "developer"
+  const [globalRole, setGlobalRole] = useState<"student" | "master" | "developer" | null>(() => {
+    return (localStorage.getItem("app_global_role") as any) || null;
+  });
+  const [globalUserInfo, setGlobalUserInfo] = useState<{ name?: string; id?: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem("app_global_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleLoginSuccess = (
+    role: "student" | "master" | "developer",
+    userInfo?: { name?: string; id?: string }
+  ) => {
+    setGlobalRole(role);
+    setGlobalUserInfo(userInfo || null);
+    localStorage.setItem("app_global_role", role);
+    if (userInfo) {
+      localStorage.setItem("app_global_user", JSON.stringify(userInfo));
+    }
+    if (role === "student") {
+      setActiveTab("student_dashboard");
+    } else {
+      setActiveTab("routine");
+    }
+  };
+
+  const handleGlobalLogout = () => {
+    setGlobalRole(null);
+    setGlobalUserInfo(null);
+    localStorage.removeItem("app_global_role");
+    localStorage.removeItem("app_global_user");
+  };
+
+  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard
+  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard">("routine");
 
   // Supabase & Cloud Integrations states
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("supabase_url") || "");
@@ -551,12 +693,13 @@ export default function App() {
 
   const resetAllData = () => {
     if (window.confirm("আপনি কি নিশ্চিতভাবে সব তথ্য মুছে দিয়ে প্রথম থেকে শুরু করতে চান?")) {
+      const current = getCurrentCalendarDefaults();
       setStudentName("আহমেদ হাসান");
       setStudentClass("পঞ্চম শ্রেণী");
       setStudentRoll("০৫");
-      setSelectedMonth("জানুয়ারি ২০২৬");
-      setDaysCount(31);
-      setStartDayIndex(3);
+      setSelectedMonth(current.selectedMonth);
+      setDaysCount(current.daysCount);
+      setStartDayIndex(current.startDayIndex);
       setCol1Header("ভোর ৫:০০ (ঘুম থেকে ওঠা, ফজর নামাজ ও নিয়মানুবর্তী আমল)");
       setCol2Header("সব বড়দের সালাম দেওয়া, নম্র আচরণ ও সৌজন্য প্রকাশ");
       setCol3Header("সুপরিকল্পিত পড়াশোনা ও সময়ের সঠিক ব্যবহার");
@@ -1229,9 +1372,16 @@ export default function App() {
         ]);
         setProgressSyncMsg("এই শিক্ষার্থীর কোনো সংরক্ষিত ক্লাউড প্রগতি রেকর্ড পাওয়া যায়নি। নতুন রেকর্ড শুরু হয়েছে।");
       }
-    } catch (err) {
-      console.error("Error loading progress:", err);
-      setProgressSyncMsg("ক্লাউড প্রগতি রেকর্ড লোড করতে সমস্যা হয়েছে।");
+    } catch (err: any) {
+      console.warn("Could not load cloud progress (offline or pending sync):", err?.message || err);
+      // Set defaults gracefully so user can continue without blocking UI
+      setLearningStyle("দৃশ্যমান (Visual) - দেখে দেখে");
+      setBehavioralPattern("চুপচাপ ও লাজুক");
+      setConfidenceLevel("মাঝারি (Mid)");
+      setKeyBarrier("ভুল করার ভয়");
+      setHiddenTalent("ছবি আঁকা");
+      setCustomStrategy("");
+      setProgressSyncMsg("অফলাইন মোড: লোকাল রেকর্ডে কাজ চালু আছে। ক্লাউড কানেকশন সক্রিয় হলে অটো সিঙ্ক হবে।");
     } finally {
       setIsLoadingProgress(false);
     }
@@ -1383,11 +1533,10 @@ export default function App() {
     e.stopPropagation();
     if (window.confirm("আপনি কি নিশ্চিতভাবে এই রেকর্ডটি ক্লাউড ডাটাবেজ থেকে মুছে ফেলতে চান? এটি আর পুনরায় উদ্ধার করা যাবে না।")) {
       try {
-        const { doc, deleteDoc } = require("firebase/firestore");
-        const { db } = require("./lib/firebase"); // Or wherever db is imported from
         await deleteDoc(doc(db, "routines", id));
         alert("রেকর্ডটি সফলভাবে মুছে ফেলা হয়েছে!");
       } catch (err) {
+        console.error("Error deleting record:", err);
         alert("রেকর্ডটি মুছতে ত্রুটি হয়েছে!");
       }
     }
@@ -1623,6 +1772,10 @@ export default function App() {
     return maxPossiblePoints > 0 ? Math.round((totalEarnedPoints / maxPossiblePoints) * 100) : 0;
   }, [totalEarnedPoints, maxPossiblePoints]);
 
+  const totalTicksExpected = maxPossiblePoints;
+  const totalTicksEarned = totalEarnedPoints;
+  const earnedPercent = earnedPercentage;
+
   const currentMedal = useMemo(() => {
     if (certAwardOverride && certAwardOverride !== "auto") {
       return certAwardOverride; // Let manual override win if set ("gold", "silver", "bronze")
@@ -1676,9 +1829,47 @@ export default function App() {
     }).filter(wk => wk.maxScore > 0); // Don't return empty weeks if daysCount < startDay
   }, [rows, daysCount]);
 
+  if (globalRole === null) {
+    return <AuthPortal onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#f3f4f6] text-gray-900 flex flex-col font-sans selection:bg-black selection:text-white" id="container-root">
       
+      {/* GLOBAL ROLE & USER AUTH BAR - HIDDEN DURING PRINTING */}
+      <div className="no-print w-full bg-slate-950 text-white border-b border-indigo-500/30 px-4 py-2 flex flex-wrap justify-between items-center text-xs font-semibold shadow-md">
+        <div className="flex items-center gap-2">
+          {globalRole === "student" && (
+            <span className="bg-indigo-600 text-white px-3 py-1 rounded-lg font-black flex items-center gap-1.5 border border-indigo-400/50 shadow-sm">
+              🎓 শিক্ষার্থী পোর্টাল: {globalUserInfo?.name || "শিক্ষার্থী"} ({globalUserInfo?.id || "STU-101"})
+            </span>
+          )}
+          {globalRole === "master" && (
+            <span className="bg-emerald-600 text-white px-3 py-1 rounded-lg font-black flex items-center gap-1.5 border border-emerald-400/50 shadow-sm">
+              👨‍🏫 মাস্টার / শিক্ষক এডমিন এক্সেস
+            </span>
+          )}
+          {globalRole === "developer" && (
+            <span className="bg-amber-500 text-slate-950 px-3 py-1 rounded-lg font-black flex items-center gap-1.5 border border-amber-300 shadow-sm">
+              💻 ডেভেলপার সিকিউরিটি আর্কিটেক্ট (ফুল সিস্টেম এক্সেস)
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-gray-400 text-[11px] hidden md:inline font-medium">
+            শিশুর নৈতিক বিকাশ ও শুদ্ধাচার ট্র্যাকার ২০২৬
+          </span>
+          <button
+            onClick={handleGlobalLogout}
+            className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-lg transition shadow flex items-center gap-1 cursor-pointer active:scale-95"
+            title="লগআউট করে পোর্টাল নির্বাচন করুন"
+          >
+            <span>🚪 লগআউট (Exit)</span>
+          </button>
+        </div>
+      </div>
+
       {/* UPPER CONTROLLER HEADER & PRINT ALERTS - HIDDEN DURING PRINTING */}
       <div className="no-print w-full bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1884,28 +2075,46 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">মাস ও বছর (Month Name)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">মাস ও বছর (Month Name)</label>
+                  <button
+                    type="button"
+                    onClick={handleSetCurrentMonth}
+                    className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="বর্তমান আসল মাস ও তারিখ স্বয়ংক্রিয়ভাবে সেট করুন"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>📅 চলতি মাস সেট করুন</span>
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    onChange={(e) => handleMonthInputChange(e.target.value)}
                     className="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-black outline-none transition font-semibold text-indigo-900"
-                    placeholder="যেমন: জানুয়ারি ২০২৬"
+                    placeholder="যেমন: জুলাই ২০২৬"
                     id="selected-month-field"
                   />
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {PRESET_MONTHS.map(m => (
-                    <button
-                      key={m}
-                      onClick={() => setSelectedMonth(`${m} ২০২৬`)}
-                      type="button"
-                      className="text-[10.5px] bg-indigo-50/70 hover:bg-indigo-100 border border-indigo-100 text-indigo-900 rounded-md px-2.5 py-1 font-semibold transition-all shadow-xs"
-                    >
-                      {m}
-                    </button>
-                  ))}
+                  {PRESET_MONTHS.map(m => {
+                    const isSelected = selectedMonth.startsWith(m);
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => handlePresetMonthClick(m)}
+                        type="button"
+                        className={`text-[10.5px] rounded-md px-2.5 py-1 font-semibold transition-all shadow-xs border ${
+                          isSelected 
+                            ? "bg-indigo-600 text-white border-indigo-600 font-bold shadow-sm" 
+                            : "bg-indigo-50/70 hover:bg-indigo-100 border-indigo-100 text-indigo-900"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -2348,6 +2557,24 @@ export default function App() {
 
         {/* TAB SYSTEM BUTTONS */}
         <div className="no-print w-full max-w-[21cm] flex flex-wrap gap-2 mb-4 bg-white p-2.5 rounded-xl border border-gray-200 shadow-sm">
+          
+          {/* STUDENT DASHBOARD TAB - HIGHLIGHTED & ALWAYS VISIBLE FOR STUDENTS & MASTERS/DEVS */}
+          <button
+            onClick={() => setActiveTab("student_dashboard")}
+            className={`flex-1 min-w-[150px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "student_dashboard"
+                ? "bg-gradient-to-r from-indigo-900 to-purple-900 text-white shadow-md border border-amber-300 ring-2 ring-indigo-400"
+                : "bg-indigo-50/80 text-indigo-950 hover:bg-indigo-100 border border-indigo-200"
+            }`}
+          >
+            <UserCheck className="w-4 h-4 text-amber-500 animate-pulse" />
+            <span>🎓 শিক্ষার্থী পোর্টাল (Dashboard)</span>
+            <span className="text-[9px] bg-amber-300 text-slate-950 font-black px-1.5 py-0.2 rounded shadow-2xs">
+              স্টুডেন্ট
+            </span>
+          </button>
+
+          {/* ROUTINE GRID TAB - VISIBLE FOR ALL */}
           <button
             onClick={() => setActiveTab("routine")}
             className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
@@ -2357,84 +2584,90 @@ export default function App() {
             }`}
           >
             <Calendar className="w-4 h-4 text-indigo-500" />
-            <span>১. 📅 মাসিক রুটিন গ্রিড</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab("certificate")}
-              className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === "certificate"
-                  ? "bg-black text-white shadow border border-amber-300"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <AwardLucide className="w-4 h-4 text-amber-500" />
-              <span>২. 🏆 অর্জন প্রশংসাপত্র</span>
-            </button>
+            <span>📅 মাসিক রুটিন গ্রিড</span>
+          </button>
 
-            <button
-              onClick={() => setActiveTab("progress_report")}
-              className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === "progress_report"
-                  ? "bg-black text-white shadow border border-purple-300"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <UserCheck className="w-4 h-4 text-purple-500" />
-              <span>৩. 🎯 মনস্তাত্ত্বিক ও প্রগতি ম্যাপিং</span>
-            </button>
+          {/* TABS FOR MASTER AND DEVELOPER ROLES */}
+          {(globalRole === "master" || globalRole === "developer") && (
+            <>
+              <button
+                onClick={() => setActiveTab("certificate")}
+                className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === "certificate"
+                    ? "bg-black text-white shadow border border-amber-300"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <AwardLucide className="w-4 h-4 text-amber-500" />
+                <span>🏆 অর্জন প্রশংসাপত্র</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("summary")}
-              className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === "summary"
-                  ? "bg-black text-white shadow border border-indigo-300"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <BarChart2 className="w-4 h-4 text-indigo-500" />
-              <span>৪. 📊 প্রগতি রিপোর্ট ও পরিসংখ্যান</span>
-            </button>
+              <button
+                onClick={() => setActiveTab("progress_report")}
+                className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === "progress_report"
+                    ? "bg-black text-white shadow border border-purple-300"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <UserCheck className="w-4 h-4 text-purple-500" />
+                <span>🎯 প্রগতি ও মনস্তাত্ত্বিক ম্যাপিং</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("event")}
-              className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === "event"
-                  ? "bg-black text-white shadow border border-rose-300"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <ClipboardList className="w-4 h-4 text-rose-500" />
-              <span>৫. 📋 অভিভাবক সভা ইভেন্ট প্ল্যান</span>
-            </button>
+              <button
+                onClick={() => setActiveTab("summary")}
+                className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === "summary"
+                    ? "bg-black text-white shadow border border-indigo-300"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <BarChart2 className="w-4 h-4 text-indigo-500" />
+                <span>📊 পরিসংখ্যান রিপোর্ট</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("slides")}
-              className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === "slides"
-                  ? "bg-black text-white shadow border border-purple-300"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-              }`}
-            >
-              <Monitor className="w-4 h-4 text-purple-500" />
-              <span>৬. 🖥️ অভিভাবক সভা স্লাইড শো</span>
-            </button>
+              <button
+                onClick={() => setActiveTab("event")}
+                className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === "event"
+                    ? "bg-black text-white shadow border border-rose-300"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <ClipboardList className="w-4 h-4 text-rose-500" />
+                <span>📋 অভিভাবক সভা প্ল্যান</span>
+              </button>
 
+              <button
+                onClick={() => setActiveTab("slides")}
+                className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === "slides"
+                    ? "bg-black text-white shadow border border-purple-300"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <Monitor className="w-4 h-4 text-purple-500" />
+                <span>🖥️ স্লাইড শো</span>
+              </button>
+            </>
+          )}
+
+          {/* DEVELOPER ONLY TAB: CLOUD PANEL */}
+          {globalRole === "developer" && (
             <button
               onClick={() => setActiveTab("integrations")}
               className={`flex-1 min-w-[130px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === "integrations"
-                  ? "bg-black text-white shadow border border-emerald-300"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  ? "bg-amber-500 text-slate-950 font-black shadow border border-amber-300"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-amber-50"
               }`}
             >
-              <Database className="w-4 h-4 text-emerald-500" />
-              <span>৭. 🔌 ক্লাউড ও হোস্টিং প্যানেল</span>
-              <span className="text-[9px] bg-emerald-100 text-emerald-700 font-extrabold px-1.5 py-0.2 rounded animate-pulse">
-                যুক্ত করুন
-              </span>
+              <Database className="w-4 h-4 text-amber-900" />
+              <span>🔌 ক্লাউড ও ডেভেলপার প্যানেল</span>
             </button>
-          </div>
+          )}
+
+        </div>
 
           {/* Web Interactive Status scoreboard (Hidden on Print) */}
           {activeTab === "routine" && (
@@ -3226,6 +3459,22 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Parent Print Alarm Notification Banner */}
+                <div className="mb-2 p-2 px-3 bg-amber-50/90 border border-amber-300 rounded-lg flex items-center justify-between text-[10.5px] text-amber-950 font-bold print:border-black print:bg-white print:p-1.5 print:my-1.5 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 bg-amber-200 text-amber-950 rounded-full print:bg-transparent print:p-0">
+                      <BellRing className="w-3.5 h-3.5 text-amber-800 print:text-black animate-pulse print:animate-none" />
+                    </div>
+                    <span className="leading-tight">
+                      <strong>অভিভাবক নির্দেশিকা 🔔:</strong> প্রিন্টকৃত রুটিন অনুযায়ী সন্তানকে অবশ্যই <span className="bg-amber-200/80 px-1 py-0.2 rounded font-black text-amber-950 print:bg-transparent print:border-b print:border-black">সকালের পড়া</span> ও <span className="bg-amber-200/80 px-1 py-0.2 rounded font-black text-amber-950 print:bg-transparent print:border-b print:border-black">সন্ধ্যার পড়া</span> এর নির্দিষ্ট সময়সূচীতেই পড়াশোনায় বসতে সহযোগিতা করুন।
+                    </span>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-1 text-[9.5px] bg-amber-200/90 px-2 py-0.5 rounded-full font-black text-amber-950 shrink-0 print:flex print:bg-transparent print:border print:border-black print:text-black">
+                    <AlarmClock className="w-3.5 h-3.5 text-amber-900 print:text-black" />
+                    <span>⏰ সময়সীমা সুনির্দিষ্ট</span>
+                  </div>
+                </div>
+
                 {/* Grid Core Table */}
                 <div className="w-full">
                   <table className="w-full border-collapse border border-black text-center">
@@ -3233,21 +3482,46 @@ export default function App() {
                       <tr className="bg-neutral-100 h-9 text-[10px] font-extrabold text-black">
                         <th className={`border border-black w-[8%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-slate-100 text-slate-950 text-[10.5px] border-slate-400" : ""}`}>তারিখ ও বার</th>
                         <th className={`border border-black w-[15%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-emerald-50 text-emerald-950 text-[10.5px] border-slate-400" : ""}`}>{col2Header}</th>
-                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-sky-50 text-sky-950 text-[10.5px] border-slate-400" : ""}`}>{col1Header}</th>
-                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-teal-50 text-teal-950 text-[10.5px] border-slate-400" : ""}`}>{col3Header}</th>
+                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-sky-50 text-sky-950 text-[10.5px] border-slate-400" : ""}`}>
+                          <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
+                            <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-sky-950 bg-sky-100 border border-sky-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
+                              <Clock className="w-3 h-3 text-sky-700 print:text-black inline shrink-0" />
+                              <span>⏰ অ্যালার্ম</span>
+                            </span>
+                            <span className="mt-0.5">{col1Header}</span>
+                          </div>
+                        </th>
+                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-teal-50 text-teal-950 text-[10.5px] border-slate-400" : ""}`}>
+                          <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
+                            <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-amber-950 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
+                              <AlarmClock className="w-3 h-3 text-amber-700 print:text-black inline shrink-0" />
+                              <span>🔔 সকালের পড়া ⏰</span>
+                            </span>
+                            <span className="mt-0.5">{col3Header}</span>
+                          </div>
+                        </th>
                         <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-violet-50 text-violet-955 text-[10.5px] border-slate-400" : ""}`}>{col4Header}</th>
                         <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-amber-50/90 text-amber-955 text-[10.5px] border-slate-400" : ""}`}>{col5Header}</th>
-                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-indigo-50/90 text-indigo-955 text-[10.5px] border-slate-400" : ""}`}>{col6Header}</th>
+                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-indigo-50/90 text-indigo-955 text-[10.5px] border-slate-400" : ""}`}>
+                          <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
+                            <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-indigo-950 bg-indigo-100 border border-indigo-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
+                              <BellRing className="w-3 h-3 text-indigo-700 print:text-black inline shrink-0" />
+                              <span>🔔 সন্ধ্যার পড়া ⏰</span>
+                            </span>
+                            <span className="mt-0.5">{col6Header}</span>
+                          </div>
+                        </th>
                         <th className={`border border-black w-[8%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-rose-50 text-rose-950 text-[10.5px] border-slate-400" : ""}`}>স্বাক্ষর / অভিভাবক</th>
                         <th className={`border border-black w-[4%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-yellow-50 text-yellow-955 text-[10.5px] border-slate-400 font-extrabold" : ""}`}>দৈনিক স্কোর</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((row) => {
+                      {rows.slice(0, daysCount).map((row) => {
                         const wkdayIndex = (startDayIndex + row.date - 1) % 7;
                         const wkday = WEEKDAYS[wkdayIndex];
                         const isFriday = wkday.short === "শুক্র";
                         const isExpanded = !!expandedDays[row.date];
+                        const isToday = isViewingCurrentMonth && row.date === currentCal.todayDate;
 
                         let rowScore = 0;
                         if (hasPrayersTracked) {
@@ -3274,14 +3548,19 @@ export default function App() {
 
                         return (
                           <Fragment key={row.date}>
-                            <tr className={isFriday ? "bg-red-50/40 text-red-955 font-bold" : (themeMode === "professional-polish" ? "hover:bg-slate-50/30 transition-colors" : "bg-white")}>
+                            <tr className={isToday ? "bg-amber-100/70 text-amber-950 font-bold border-2 border-amber-500 shadow-xs" : (isFriday ? "bg-red-50/40 text-red-955 font-bold" : (themeMode === "professional-polish" ? "hover:bg-slate-50/30 transition-colors" : "bg-white"))}>
                               {/* 1. Date & Day Name */}
-                              <td className={`border ${themeMode === "professional-polish" ? "border-slate-300 bg-slate-50/30" : "border-black"} font-extrabold text-black ${sizes.cellPadding} ${sizes.fontSize} select-none`}>
-                                <div className="flex flex-col items-center justify-center leading-none">
+                              <td className={`border ${isToday ? "border-amber-500 bg-amber-200/90 text-amber-950 font-black" : (themeMode === "professional-polish" ? "border-slate-300 bg-slate-50/30" : "border-black")} font-extrabold text-black ${sizes.cellPadding} ${sizes.fontSize} select-none relative`}>
+                                <div className="flex flex-col items-center justify-center leading-none py-0.5">
                                   <span className="font-black text-[13px]">{toBnNum(row.date)}</span>
-                                  <span className={`text-[9.2px] font-black mt-0.5 ${isFriday ? "text-red-700 font-bold" : (themeMode === "professional-polish" ? "text-slate-500" : "text-gray-600")}`}>
+                                  <span className={`text-[9.2px] font-black mt-0.5 ${isToday ? "text-amber-900" : (isFriday ? "text-red-700 font-bold" : (themeMode === "professional-polish" ? "text-slate-500" : "text-gray-600"))}`}>
                                     ({wkday.short})
                                   </span>
+                                  {isToday && (
+                                    <span className="mt-1 px-1.5 py-0.2 bg-amber-600 text-white text-[8px] font-black rounded-full shadow-2xs tracking-wider">
+                                      আজ
+                                    </span>
+                                  )}
                                 </div>
                               </td>
 
@@ -5676,6 +5955,12 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
                 </div>
 
               </div>
+            </div>
+          )}
+
+          {activeTab === "student_dashboard" && (
+            <div className="no-print w-full animate-fadeIn">
+              <StudentDashboard />
             </div>
           )}
 
