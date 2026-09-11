@@ -43,12 +43,14 @@ import {
   Tablet,
   Bell,
   AlarmClock,
-  BellRing
+  BellRing,
+  LifeBuoy
 } from "lucide-react";
 import { db } from "./firebase";
 import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
 import StudentDashboard from "./components/StudentDashboard";
 import AuthPortal from "./components/AuthPortal";
+import SupportTroubleshooter from "./components/SupportTroubleshooter";
 import {
   slidesForStudents,
   slidesForTeachers,
@@ -260,6 +262,8 @@ export default function App() {
   const [studentClass, setStudentClass] = useState(() => localStorage.getItem("studentClass") || "পঞ্চম শ্রেণী");
   const [studentRoll, setStudentRoll] = useState(() => localStorage.getItem("studentRoll") || "০৫");
   const [selectedMonth, setSelectedMonth] = useState(() => localStorage.getItem("selectedMonth") || currentCal.selectedMonth);
+  const [selectedHeaderCol, setSelectedHeaderCol] = useState<number | null>(1);
+  const [selectedCompetencyHeader, setSelectedCompetencyHeader] = useState<number | null>(0);
   
   const [daysCount, setDaysCount] = useState<number>(() => Number(localStorage.getItem("daysCount")) || currentCal.daysCount);
   const [startDayIndex, setStartDayIndex] = useState<number>(() => Number(localStorage.getItem("startDayIndex")) || currentCal.startDayIndex);
@@ -351,8 +355,8 @@ export default function App() {
     localStorage.removeItem("app_global_user");
   };
 
-  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard
-  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard">("routine");
+  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard vs. Support Troubleshooter
+  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard" | "troubleshooter">("routine");
 
   // Supabase & Cloud Integrations states
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("supabase_url") || "");
@@ -2574,6 +2578,22 @@ export default function App() {
             </span>
           </button>
 
+          {/* TROUBLESHOOTER & SUPPORT HUB TAB - VISIBLE TO ALL ROLES */}
+          <button
+            onClick={() => setActiveTab("troubleshooter")}
+            className={`flex-1 min-w-[150px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "troubleshooter"
+                ? "bg-gradient-to-r from-amber-500 via-rose-600 to-purple-700 text-white font-black shadow-md border border-amber-300 ring-2 ring-amber-400"
+                : "bg-amber-50/90 text-amber-950 hover:bg-amber-100 border border-amber-200"
+            }`}
+          >
+            <LifeBuoy className="w-4 h-4 text-amber-500 animate-spin" />
+            <span>🛠️ সমস্যা সমাধান & ড্যাশবোর্ড কন্ট্রোল</span>
+            <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded shadow-2xs">
+              সাপোর্ট
+            </span>
+          </button>
+
           {/* ROUTINE GRID TAB - VISIBLE FOR ALL */}
           <button
             onClick={() => setActiveTab("routine")}
@@ -3134,12 +3154,26 @@ export default function App() {
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
                           <tr className="bg-slate-100 border-b border-gray-200 text-slate-700 font-bold">
-                            <th className="p-3 w-[18%] text-slate-900 font-black">বিষয় / দক্ষতা ক্ষেত্র</th>
-                            <th className="p-3 w-[25%] text-slate-900 font-black">বর্তমান অবস্থা ও দুর্বলতা</th>
-                            <th className="p-3 w-[25%] text-slate-900 font-black">মাসিক লক্ষ্য ও টার্গেট</th>
-                            <th className="p-3 w-[18%] text-slate-900 font-black">সহায়তা ধরন</th>
-                            <th className="p-3 w-[10%] text-center text-slate-900 font-black">প্রগতি সূচক</th>
-                            <th className="p-3 w-[4%] text-center text-slate-900 font-black no-print">অ্যাকশন</th>
+                            {[
+                              { label: "বিষয় / দক্ষতা ক্ষেত্র", width: "w-[18%]", align: "text-left" },
+                              { label: "বর্তমান অবস্থা ও দুর্বলতা", width: "w-[25%]", align: "text-left" },
+                              { label: "মাসিক লক্ষ্য ও টার্গেট", width: "w-[25%]", align: "text-left" },
+                              { label: "সহায়তা ধরন", width: "w-[18%]", align: "text-left" },
+                              { label: "প্রগতি সূচক", width: "w-[10%]", align: "text-center" },
+                              { label: "অ্যাকশন", width: "w-[4%]", align: "text-center no-print" }
+                            ].map((col, idx) => (
+                              <th
+                                key={idx}
+                                onClick={() => setSelectedCompetencyHeader(idx)}
+                                className={`p-3 ${col.width} ${col.align} text-slate-900 font-black cursor-pointer relative transition-all duration-200 hover:shadow-md hover:bg-indigo-100/80 hover:z-20 hover:scale-[1.01] select-none ${
+                                  selectedCompetencyHeader === idx
+                                    ? "shadow-md shadow-indigo-500/25 ring-2 ring-indigo-500/80 bg-indigo-50/90 text-indigo-950 z-10"
+                                    : "hover:bg-slate-200/60"
+                                }`}
+                              >
+                                {col.label}
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
@@ -3480,39 +3514,59 @@ export default function App() {
                   <table className="w-full border-collapse border border-black text-center">
                     <thead>
                       <tr className="bg-neutral-100 h-9 text-[10px] font-extrabold text-black">
-                        <th className={`border border-black w-[8%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-slate-100 text-slate-950 text-[10.5px] border-slate-400" : ""}`}>তারিখ ও বার</th>
-                        <th className={`border border-black w-[15%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-emerald-50 text-emerald-950 text-[10.5px] border-slate-400" : ""}`}>{col2Header}</th>
-                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-sky-50 text-sky-950 text-[10.5px] border-slate-400" : ""}`}>
-                          <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
-                            <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-sky-950 bg-sky-100 border border-sky-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
-                              <Clock className="w-3 h-3 text-sky-700 print:text-black inline shrink-0" />
-                              <span>⏰ অ্যালার্ম</span>
-                            </span>
-                            <span className="mt-0.5">{col1Header}</span>
-                          </div>
-                        </th>
-                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-teal-50 text-teal-950 text-[10.5px] border-slate-400" : ""}`}>
-                          <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
-                            <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-amber-950 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
-                              <AlarmClock className="w-3 h-3 text-amber-700 print:text-black inline shrink-0" />
-                              <span>🔔 সকালের পড়া ⏰</span>
-                            </span>
-                            <span className="mt-0.5">{col3Header}</span>
-                          </div>
-                        </th>
-                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-violet-50 text-violet-955 text-[10.5px] border-slate-400" : ""}`}>{col4Header}</th>
-                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-amber-50/90 text-amber-955 text-[10.5px] border-slate-400" : ""}`}>{col5Header}</th>
-                        <th className={`border border-black w-[13%] font-black py-1 px-0.5 leading-tight ${themeMode === "professional-polish" ? "bg-indigo-50/90 text-indigo-955 text-[10.5px] border-slate-400" : ""}`}>
-                          <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
-                            <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-indigo-950 bg-indigo-100 border border-indigo-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
-                              <BellRing className="w-3 h-3 text-indigo-700 print:text-black inline shrink-0" />
-                              <span>🔔 সন্ধ্যার পড়া ⏰</span>
-                            </span>
-                            <span className="mt-0.5">{col6Header}</span>
-                          </div>
-                        </th>
-                        <th className={`border border-black w-[8%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-rose-50 text-rose-950 text-[10.5px] border-slate-400" : ""}`}>স্বাক্ষর / অভিভাবক</th>
-                        <th className={`border border-black w-[4%] font-black py-1 px-0.5 ${themeMode === "professional-polish" ? "bg-yellow-50 text-yellow-955 text-[10.5px] border-slate-400 font-extrabold" : ""}`}>দৈনিক স্কোর</th>
+                        {[
+                          { id: 0, width: "w-[8%]", polishBg: "bg-slate-100 text-slate-950 text-[10.5px] border-slate-400", content: "তারিখ ও বার" },
+                          { id: 1, width: "w-[15%]", polishBg: "bg-emerald-50 text-emerald-950 text-[10.5px] border-slate-400", content: col2Header },
+                          { id: 2, width: "w-[13%]", polishBg: "bg-sky-50 text-sky-950 text-[10.5px] border-slate-400", content: (
+                            <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
+                              <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-sky-950 bg-sky-100 border border-sky-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
+                                <Clock className="w-3 h-3 text-sky-700 print:text-black inline shrink-0" />
+                                <span>⏰ অ্যালার্ম</span>
+                              </span>
+                              <span className="mt-0.5">{col1Header}</span>
+                            </div>
+                          )},
+                          { id: 3, width: "w-[13%]", polishBg: "bg-teal-50 text-teal-950 text-[10.5px] border-slate-400", content: (
+                            <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
+                              <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-amber-950 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
+                                <AlarmClock className="w-3 h-3 text-amber-700 print:text-black inline shrink-0" />
+                                <span>🔔 সকালের পড়া ⏰</span>
+                              </span>
+                              <span className="mt-0.5">{col3Header}</span>
+                            </div>
+                          )},
+                          { id: 4, width: "w-[13%]", polishBg: "bg-violet-50 text-violet-955 text-[10.5px] border-slate-400", content: col4Header },
+                          { id: 5, width: "w-[13%]", polishBg: "bg-amber-50/90 text-amber-955 text-[10.5px] border-slate-400", content: col5Header },
+                          { id: 6, width: "w-[13%]", polishBg: "bg-indigo-50/90 text-indigo-955 text-[10.5px] border-slate-400", content: (
+                            <div className="flex flex-col items-center justify-center gap-0.5 py-0.5">
+                              <span className="inline-flex items-center gap-1 text-[8.5px] font-black text-indigo-950 bg-indigo-100 border border-indigo-300 px-1.5 py-0.2 rounded-full print:border-black print:bg-white print:text-black shadow-2xs">
+                                <BellRing className="w-3 h-3 text-indigo-700 print:text-black inline shrink-0" />
+                                <span>🔔 সন্ধ্যার পড়া ⏰</span>
+                              </span>
+                              <span className="mt-0.5">{col6Header}</span>
+                            </div>
+                          )},
+                          { id: 7, width: "w-[8%]", polishBg: "bg-rose-50 text-rose-950 text-[10.5px] border-slate-400", content: "স্বাক্ষর / অভিভাবক" },
+                          { id: 8, width: "w-[4%]", polishBg: "bg-yellow-50 text-yellow-955 text-[10.5px] border-slate-400 font-extrabold", content: "দৈনিক স্কোর" }
+                        ].map((col) => {
+                          const isSelected = selectedHeaderCol === col.id;
+                          const isPolish = themeMode === "professional-polish";
+                          return (
+                            <th
+                              key={col.id}
+                              onClick={() => setSelectedHeaderCol(col.id)}
+                              className={`border border-black ${col.width} font-black py-1 px-0.5 leading-tight transition-all duration-200 cursor-pointer relative select-none hover:z-30 hover:scale-[1.02] hover:shadow-md ${
+                                isPolish ? col.polishBg : ""
+                              } ${
+                                isSelected
+                                  ? "shadow-md shadow-amber-500/30 ring-2 ring-amber-500 bg-amber-100/95 text-amber-950 z-20 scale-[1.01] print:bg-amber-100"
+                                  : "hover:bg-amber-50/80 hover:shadow-sm"
+                              }`}
+                            >
+                              {col.content}
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody>
@@ -5961,6 +6015,23 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
           {activeTab === "student_dashboard" && (
             <div className="no-print w-full animate-fadeIn">
               <StudentDashboard />
+            </div>
+          )}
+
+          {activeTab === "troubleshooter" && (
+            <div className="no-print w-full animate-fadeIn">
+              <SupportTroubleshooter
+                currentRole={globalRole || "student"}
+                onImpersonateStudent={(studentId, studentName) => {
+                  const studentObj = { id: studentId, name: studentName, studentId };
+                  localStorage.setItem("current_student_user", JSON.stringify(studentObj));
+                  localStorage.setItem("app_global_user", JSON.stringify(studentObj));
+                  localStorage.setItem("app_global_role", "student");
+                  setGlobalRole("student");
+                  setGlobalUserInfo(studentObj);
+                  setActiveTab("student_dashboard");
+                }}
+              />
             </div>
           )}
 

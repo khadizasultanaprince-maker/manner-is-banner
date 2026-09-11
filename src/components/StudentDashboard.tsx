@@ -1048,6 +1048,174 @@ export default function StudentDashboard() {
           <span>প্রিন্ট/ডাউনলোড করুন</span>
         </button>
       </div>
+
+      {/* STUDENT SUPPORT & HELP TICKET SECTION */}
+      <StudentSupportSection currentStudent={currentStudent} />
     </div>
   );
 }
+
+function StudentSupportSection({ currentStudent }: { currentStudent: StudentUser }) {
+  const [showForm, setShowForm] = useState(false);
+  const [problemDesc, setProblemDesc] = useState("");
+  const [problemCategory, setProblemCategory] = useState<"study_issue" | "login_issue" | "routine_help" | "other">("study_issue");
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const [studentTickets, setStudentTickets] = useState<any[]>(() => {
+    try {
+      const all = JSON.parse(localStorage.getItem("all_support_tickets") || "[]");
+      return all.filter((t: any) => t.senderId === currentStudent.studentId);
+    } catch {
+      return [];
+    }
+  });
+
+  const handleSubmitTicket = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!problemDesc.trim()) return;
+
+    const newTicket = {
+      id: `TICK-${Math.floor(100 + Math.random() * 900)}`,
+      senderRole: "student",
+      senderId: currentStudent.studentId,
+      senderName: currentStudent.name,
+      category: problemCategory,
+      description: problemDesc.trim(),
+      status: "pending",
+      createdAt: new Date().toISOString()
+    };
+
+    const all = JSON.parse(localStorage.getItem("all_support_tickets") || "[]");
+    const updated = [newTicket, ...all];
+    localStorage.setItem("all_support_tickets", JSON.stringify(updated));
+
+    try {
+      setDoc(doc(db, "system_metadata", "support_tickets"), {
+        tickets: updated,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.warn("Cloud sync warning:", err);
+    }
+
+    setStudentTickets([newTicket, ...studentTickets]);
+    setProblemDesc("");
+    setSubmitSuccess(true);
+    setTimeout(() => {
+      setSubmitSuccess(false);
+      setShowForm(false);
+    }, 2000);
+  };
+
+  return (
+    <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/30 space-y-4 shadow-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-3">
+        <div>
+          <h3 className="text-base font-black text-white flex items-center gap-2">
+            <Bell className="w-5 h-5 text-amber-400" />
+            <span>ড্যাশবোর্ড সমস্যা ও শিক্ষক সাপোর্ট সেন্টার</span>
+          </h3>
+          <p className="text-xs text-indigo-200 mt-0.5">
+            পড়ালেখা, রুটিন বা ড্যাশবোর্ডে কোনো সমস্যা হলে শিক্ষকের নিকট সাহায্য চান।
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer"
+        >
+          <Plus className="w-4 h-4 text-amber-200" />
+          <span>{showForm ? "ফর্ম বন্ধ করুন" : "সমস্যা লিখে সাহায্য চান 💬"}</span>
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmitTicket} className="bg-slate-900 p-4 rounded-xl border border-amber-400/50 space-y-3 animate-fade-in">
+          {submitSuccess && (
+            <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/50 rounded-lg text-emerald-200 text-xs font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>আপনার সমস্যা সফলভাবে শিক্ষককে জানানো হয়েছে! শিক্ষক সমাধান করবেন।</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-amber-300 mb-1">সমস্যার বিষয় নির্বাচন:</label>
+            <select
+              value={problemCategory}
+              onChange={(e) => setProblemCategory(e.target.value as any)}
+              className="w-full bg-slate-950 border border-indigo-500/40 rounded-xl px-3 py-2 text-xs text-indigo-200"
+            >
+              <option value="study_issue">📖 পড়ালেখা / কাজের প্রগ্রেস সমস্যা</option>
+              <option value="login_issue">🔐 পাসওয়ার্ড বা আইডি সমস্যা</option>
+              <option value="routine_help">📅 নতুন বিষয় যোগ করার অনুরোধ</option>
+              <option value="other">💬 অন্যান্য সাহায্য</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-200 mb-1">সমস্যার বিবরণ লিখুন:</label>
+            <textarea
+              rows={3}
+              placeholder="যেমন: আমার হাতের লেখা টাস্ক সম্পন্ন করার পরও প্রগ্রেস দেখাচ্ছে না..."
+              value={problemDesc}
+              onChange={(e) => setProblemDesc(e.target.value)}
+              className="w-full bg-slate-950 border border-indigo-500/40 rounded-xl p-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-3 py-1.5 bg-gray-800 text-xs text-gray-300 font-bold rounded-xl"
+            >
+              বাতিল
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow cursor-pointer"
+            >
+              শিক্ষককে পাঠান 🚀
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Submitted Tickets & Teacher Replies List */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-bold text-gray-400">আমার পূর্ববর্তী সাহায্য আবেদন ও শিক্ষকের সমাধান:</h4>
+        {studentTickets.length === 0 ? (
+          <p className="text-xs text-gray-500 italic bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-center">
+            আপনার কোনো সমস্যা বা টিকেট জমা নেই।
+          </p>
+        ) : (
+          studentTickets.map((t) => (
+            <div key={t.id} className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-xs space-y-1">
+              <div className="flex justify-between items-center font-bold">
+                <span className="text-amber-300">{t.id} • {t.description}</span>
+                {t.status === "pending" ? (
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-black">
+                    অপেক্ষমান ⏳
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-black">
+                    সমাধান হয়েছে ✅
+                  </span>
+                )}
+              </div>
+
+              {t.status === "solved" && t.resolutionNote && (
+                <div className="mt-1 p-2 bg-emerald-950/60 border border-emerald-500/30 rounded-lg text-emerald-200">
+                  <strong className="block text-[10px] text-amber-300">💡 শিক্ষকের সমাধান ({t.solvedBy}):</strong>
+                  <span>{t.resolutionNote}</span>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
