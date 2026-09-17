@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from "react";
+import React, { useState, useMemo, useEffect, useRef, Fragment, ChangeEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Printer, 
@@ -44,13 +44,16 @@ import {
   Bell,
   AlarmClock,
   BellRing,
-  LifeBuoy
+  LifeBuoy,
+  Camera,
+  Upload
 } from "lucide-react";
 import { db } from "./firebase";
 import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
 import StudentDashboard from "./components/StudentDashboard";
 import AuthPortal from "./components/AuthPortal";
 import SupportTroubleshooter from "./components/SupportTroubleshooter";
+import { PerformanceAnalyzerModal } from "./components/PerformanceAnalyzerModal";
 import {
   slidesForStudents,
   slidesForTeachers,
@@ -59,7 +62,7 @@ import {
   teacherPrompt,
   parentPrompt
 } from "./slidesData";
-import { studentsByClass } from "./studentsData";
+import { studentsByClass, Student } from "./studentsData";
 import { 
   collection, 
   onSnapshot, 
@@ -97,6 +100,35 @@ function fromBnNum(str: string | number): string {
     "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9"
   };
   return str.toString().replace(/[০-৯]/g, (w) => bnToEnMap[w] || w);
+}
+
+// Canonical class name and student search helpers
+function getCanonicalClassName(clsName: string): string {
+  if (!clsName) return "";
+  const cleaned = clsName.trim().replace(/\s*শ্রেণি\s*$/i, "").replace(/\s*শ্রেণী\s*$/i, "").trim();
+  for (const key of Object.keys(studentsByClass)) {
+    if (key === cleaned || key === clsName.trim()) return key;
+  }
+  return cleaned;
+}
+
+function getStudentsForClass(clsName: string): Student[] {
+  const canonical = getCanonicalClassName(clsName);
+  return studentsByClass[canonical] || [];
+}
+
+function normalizeRollDigits(val: string | number | undefined | null): string {
+  if (val === undefined || val === null) return "";
+  const en = fromBnNum(val).toString().trim().replace(/^0+/, "");
+  return en;
+}
+
+function findStudentByClassAndRoll(cls: string, roll: string): Student | null {
+  const list = getStudentsForClass(cls);
+  if (!list || list.length === 0 || !roll || !roll.trim()) return null;
+  const target = normalizeRollDigits(roll);
+  if (!target) return null;
+  return list.find(s => normalizeRollDigits(s.roll) === target) || null;
 }
 
 // Helper to get React element for icons in slides
@@ -259,8 +291,20 @@ export default function App() {
 
   // --- Persistent & Local States ---
   const [studentName, setStudentName] = useState(() => localStorage.getItem("studentName") || "আহমেদ হাসান");
-  const [studentClass, setStudentClass] = useState(() => localStorage.getItem("studentClass") || "পঞ্চম শ্রেণী");
+  const [studentClass, setStudentClass] = useState(() => localStorage.getItem("studentClass") || "পঞ্চম শ্রেণি");
   const [studentRoll, setStudentRoll] = useState(() => localStorage.getItem("studentRoll") || "০৫");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [studentPhoto, setStudentPhoto] = useState<string>(() => {
+    const curClass = localStorage.getItem("studentClass") || "পঞ্চম শ্রেণি";
+    const curRoll = localStorage.getItem("studentRoll") || "০৫";
+    const canonical = getCanonicalClassName(curClass);
+    const normRoll = normalizeRollDigits(curRoll);
+    return (
+      (canonical && normRoll ? localStorage.getItem(`student_photo_${canonical}_${normRoll}`) : null) ||
+      localStorage.getItem("studentPhoto") ||
+      ""
+    );
+  });
   const [selectedMonth, setSelectedMonth] = useState(() => localStorage.getItem("selectedMonth") || currentCal.selectedMonth);
   const [selectedHeaderCol, setSelectedHeaderCol] = useState<number | null>(1);
   const [selectedCompetencyHeader, setSelectedCompetencyHeader] = useState<number | null>(0);
@@ -301,7 +345,13 @@ export default function App() {
   }, [selectedMonth, currentCal]);
 
   // Header Titles (Customizable values)
-  const [col1Header, setCol1Header] = useState(() => localStorage.getItem("col1Header") || "১। নামাজের জন্য ঘুম জাগা ০৪:৩০");
+  const [col1Header, setCol1Header] = useState(() => {
+    const saved = localStorage.getItem("col1Header");
+    if (!saved || saved === "১। নামাজের জন্য ঘুম জাগা ০৪:৩০" || saved.includes("০৪:৩০")) {
+      return "১। নামাজের জন্য ঘুম জাগা ০৫:০০";
+    }
+    return saved;
+  });
   const [col2Header, setCol2Header] = useState(() => localStorage.getItem("col2Header") || "২। ফজর, কোরআন তিলাওয়াত ও ৫ ওয়াক্ত নামাজ");
   const [col3Header, setCol3Header] = useState(() => localStorage.getItem("col3Header") || "৩। সকালের পড়া ০৫:৩০ থেকে ০৮:৩০ পর্যন্ত (৩ ঘন্টা)");
   const [col4Header, setCol4Header] = useState(() => localStorage.getItem("col4Header") || "৪। স্কুল ছুটির পর প্রথম কাজ হাতের লেখা সম্পন্ন করা");
@@ -519,6 +569,73 @@ export default function App() {
 
   // Iframe printing state and handler
   const [showIframePrintModal, setShowIframePrintModal] = useState(false);
+
+  // Performance Analysis & Next Month Goal Proposal Handler
+  const [showPerformanceModal, setShowPerformanceModal] = useState(false);
+  const [performanceApplyMsg, setPerformanceApplyMsg] = useState("");
+
+  const handleApplyPerformanceGoals = (params: {
+    monthlyAdvice: string;
+    col1Header?: string;
+    col4Header?: string;
+    dailyGoals?: string[];
+    advanceToMonth?: {
+      selectedMonth: string;
+      daysCount: number;
+      startDayIndex: number;
+    };
+  }) => {
+    if (params.monthlyAdvice) {
+      setMonthlyAdvice(params.monthlyAdvice);
+      localStorage.setItem("monthlyAdvice", params.monthlyAdvice);
+    }
+    if (params.col1Header) {
+      setCol1Header(params.col1Header);
+      localStorage.setItem("col1Header", params.col1Header);
+    }
+    if (params.col4Header) {
+      setCol4Header(params.col4Header);
+      localStorage.setItem("col4Header", params.col4Header);
+    }
+    if (params.advanceToMonth) {
+      setSelectedMonth(params.advanceToMonth.selectedMonth);
+      setDaysCount(params.advanceToMonth.daysCount);
+      setStartDayIndex(params.advanceToMonth.startDayIndex);
+      localStorage.setItem("selectedMonth", params.advanceToMonth.selectedMonth);
+      localStorage.setItem("daysCount", params.advanceToMonth.daysCount.toString());
+      localStorage.setItem("startDayIndex", params.advanceToMonth.startDayIndex.toString());
+    }
+    if (params.dailyGoals && params.dailyGoals.length > 0) {
+      const newCount = params.advanceToMonth ? params.advanceToMonth.daysCount : daysCount;
+      setRows(Array.from({ length: newCount }, (_, i) => ({
+        date: i + 1,
+        col1Checked: false,
+        col2Checked: false,
+        col3Checked: false,
+        col4Checked: false,
+        col5Checked: false,
+        col6Checked: false,
+        eveningSubject: "",
+        dailyNote: "",
+        dailyGoal: params.dailyGoals![i % params.dailyGoals!.length],
+        col1Val: "",
+        col2Val: "",
+        col3Val: "",
+        col4Val: "",
+        col5Val: "",
+        col6Val: "",
+        fajrChecked: false,
+        dhuhrChecked: false,
+        asrChecked: false,
+        maghribChecked: false,
+        ishaChecked: false
+      })));
+    }
+    setPerformanceApplyMsg(`সাফল্যের সাথে ${studentName || "শিক্ষার্থী"}-এর আগামী মাসের প্রস্তাবিত লক্ষ্য ও উপদেশ রুটিনে প্রয়োগ করা হয়েছে!`);
+    setTimeout(() => {
+      setPerformanceApplyMsg("");
+    }, 6000);
+  };
 
   const handlePrint = () => {
     if (window.self !== window.top) {
@@ -831,7 +948,12 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem("routineRows", JSON.stringify(rows));
-  }, [rows]);
+    const cCls = getCanonicalClassName(studentClass);
+    const nRoll = normalizeRollDigits(studentRoll);
+    if (cCls && nRoll) {
+      localStorage.setItem(`routine_rows_${cCls}_${nRoll}`, JSON.stringify(rows));
+    }
+  }, [rows, studentClass, studentRoll]);
 
   useEffect(() => {
     localStorage.setItem("principalApproved", principalApproved ? "true" : "false");
@@ -1206,6 +1328,7 @@ export default function App() {
         studentName,
         studentClass,
         studentRoll,
+        studentPhoto,
         selectedMonth,
         daysCount,
         startDayIndex,
@@ -1240,6 +1363,15 @@ export default function App() {
       if (item.studentName !== undefined) setStudentName(item.studentName);
       if (item.studentClass !== undefined) setStudentClass(item.studentClass);
       if (item.studentRoll !== undefined) setStudentRoll(item.studentRoll);
+      if (item.studentPhoto !== undefined) {
+        setStudentPhoto(item.studentPhoto);
+        const cCls = getCanonicalClassName(item.studentClass || studentClass);
+        const nRoll = normalizeRollDigits(item.studentRoll || studentRoll);
+        if (cCls && nRoll) {
+          localStorage.setItem(`student_photo_${cCls}_${nRoll}`, item.studentPhoto);
+        }
+        localStorage.setItem("studentPhoto", item.studentPhoto);
+      }
       if (item.selectedMonth !== undefined) setSelectedMonth(item.selectedMonth);
       if (item.daysCount !== undefined) setDaysCount(Number(item.daysCount));
       if (item.startDayIndex !== undefined) setStartDayIndex(Number(item.startDayIndex));
@@ -1277,6 +1409,15 @@ export default function App() {
     if (item.studentName !== undefined) setStudentName(item.studentName);
     if (item.studentClass !== undefined) setStudentClass(item.studentClass);
     if (item.studentRoll !== undefined) setStudentRoll(item.studentRoll);
+    if (item.studentPhoto !== undefined) {
+      setStudentPhoto(item.studentPhoto);
+      const cCls = getCanonicalClassName(item.studentClass || studentClass);
+      const nRoll = normalizeRollDigits(item.studentRoll || studentRoll);
+      if (cCls && nRoll) {
+        localStorage.setItem(`student_photo_${cCls}_${nRoll}`, item.studentPhoto);
+      }
+      localStorage.setItem("studentPhoto", item.studentPhoto);
+    }
     if (item.selectedMonth !== undefined) setSelectedMonth(item.selectedMonth);
     if (item.daysCount !== undefined) setDaysCount(Number(item.daysCount));
     if (item.startDayIndex !== undefined) setStartDayIndex(Number(item.startDayIndex));
@@ -1389,6 +1530,125 @@ export default function App() {
     } finally {
       setIsLoadingProgress(false);
     }
+  };
+
+  // Student selection, matching & photo helpers
+  const selectedClassCanonical = useMemo(() => getCanonicalClassName(studentClass), [studentClass]);
+  const studentsInCurrentClass = useMemo(() => getStudentsForClass(studentClass), [studentClass]);
+
+  const matchedStudent = useMemo(() => {
+    return findStudentByClassAndRoll(studentClass, studentRoll);
+  }, [studentClass, studentRoll]);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      alert("ছবির সাইজ সর্বোচ্চ ৩ মেগাবাইট (3MB) হওয়া বাঞ্ছনীয়।");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setStudentPhoto(dataUrl);
+        const canonical = getCanonicalClassName(studentClass);
+        const normRoll = normalizeRollDigits(studentRoll);
+        if (canonical && normRoll) {
+          localStorage.setItem(`student_photo_${canonical}_${normRoll}`, dataUrl);
+        }
+        localStorage.setItem("studentPhoto", dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setStudentPhoto("");
+    const canonical = getCanonicalClassName(studentClass);
+    const normRoll = normalizeRollDigits(studentRoll);
+    if (canonical && normRoll) {
+      localStorage.removeItem(`student_photo_${canonical}_${normRoll}`);
+    }
+    localStorage.removeItem("studentPhoto");
+    if (photoInputRef.current) {
+      photoInputRef.current.value = "";
+    }
+  };
+
+  const loadStudentData = (cls: string, roll: string, name: string) => {
+    const cCls = getCanonicalClassName(cls);
+    const nRoll = normalizeRollDigits(roll);
+    if (cCls && nRoll) {
+      // Photo
+      const photo = localStorage.getItem(`student_photo_${cCls}_${nRoll}`);
+      setStudentPhoto(photo || "");
+
+      // Routine Rows
+      const localRows = localStorage.getItem(`routine_rows_${cCls}_${nRoll}`);
+      if (localRows) {
+        try {
+          const parsed = JSON.parse(localRows);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setRows(parsed);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        const cloudItem = savedRoutines.find((r: any) => {
+          return (
+            getCanonicalClassName(r.studentClass || "") === cCls &&
+            normalizeRollDigits(r.studentRoll || "") === nRoll
+          );
+        });
+        if (cloudItem && Array.isArray(cloudItem.rows) && cloudItem.rows.length > 0) {
+          setRows(cloudItem.rows);
+        }
+      }
+    }
+
+    loadStudentProgress(cls, roll, name);
+  };
+
+  const handleClassSelect = (newCls: string) => {
+    if (newCls === "other") {
+      setStudentClass("কাস্টম শ্রেণি");
+      return;
+    }
+    const fullClsName = newCls ? `${newCls} শ্রেণি` : "";
+    setStudentClass(fullClsName);
+
+    // Look for matching student in new class with current roll
+    const matchedInNew = findStudentByClassAndRoll(newCls, studentRoll);
+    if (matchedInNew) {
+      setStudentName(matchedInNew.name);
+      setStudentRoll(toBnNum(matchedInNew.roll));
+      loadStudentData(newCls, matchedInNew.roll, matchedInNew.name);
+    } else {
+      const list = getStudentsForClass(newCls);
+      if (list.length > 0) {
+        const first = list[0];
+        setStudentRoll(toBnNum(first.roll));
+        setStudentName(first.name);
+        loadStudentData(newCls, first.roll, first.name);
+      }
+    }
+  };
+
+  const handleRollInput = (val: string) => {
+    setStudentRoll(val);
+    const matched = findStudentByClassAndRoll(studentClass, val);
+    if (matched) {
+      setStudentName(matched.name);
+      loadStudentData(studentClass, matched.roll, matched.name);
+    }
+  };
+
+  const handleSelectStudent = (stud: Student) => {
+    setStudentRoll(toBnNum(stud.roll));
+    setStudentName(stud.name);
+    loadStudentData(studentClass, stud.roll, stud.name);
   };
 
   const saveStudentProgress = async () => {
@@ -1985,96 +2245,241 @@ export default function App() {
 
           {/* Student Identifiers Card */}
           <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
-            <h2 className="text-sm font-bold text-slate-900 border-l-4 border-indigo-600 pl-2.5 mb-4 flex items-center gap-2">
-              <User className="w-4 h-4 text-slate-750" />
-              <span>২. শিক্ষার্থীর ও মাসের পরিচিতি</span>
-            </h2>
+            <div className="border-l-4 border-indigo-600 pl-2.5 mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <User className="w-4 h-4 text-slate-750" />
+                <span>২. শ্রেণি ও রোল অনুযায়ী শিক্ষার্থীর ফরম</span>
+              </h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                অটোমেটিক স্টুডেন্ট ফরম
+              </span>
+            </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">শিক্ষার্থীর নাম (Name)</label>
-                <input
-                  type="text"
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-black outline-none transition"
-                  placeholder="যেমন: আহমেদ হাসান"
-                  id="student-name-field"
-                />
-              </div>
-
-              {/* School DB student selector dropdown */}
-              {studentsByClass[studentClass] && studentsByClass[studentClass].length > 0 && (
-                <div className="bg-indigo-50/30 p-2.5 rounded-lg border border-indigo-100">
-                  <label className="block text-xs font-black text-indigo-700 mb-1 flex items-center gap-1">
-                    <span>🏫</span> {studentClass} শ্রেণির ডাটাবেজ থেকে সিলেক্ট করুন:
+              {/* STEP 1: CLASS SELECTION */}
+              <div className="bg-indigo-50/25 p-3.5 rounded-xl border border-indigo-150">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">১</span>
+                    <span>শ্রেণি নির্বাচন করুন (Select Class):</span>
                   </label>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val) {
-                        const [roll, name] = val.split("::");
-                        setStudentName(name);
-                        setStudentRoll(roll);
-                      }
-                    }}
-                    className="w-full px-3 py-2 text-sm bg-white border border-indigo-200 rounded-lg focus:bg-white focus:border-indigo-600 outline-none transition font-semibold text-indigo-950"
-                  >
-                    <option value="">-- শিক্ষার্থী নির্বাচন করুন ({toBnNum(studentsByClass[studentClass].length)} জন) --</option>
-                    {studentsByClass[studentClass].map(stud => (
-                      <option key={stud.roll + stud.name} value={`${stud.roll}::${stud.name}`}>
-                        রোল: {toBnNum(stud.roll)} — {stud.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">শ্রেণী (Class)</label>
-                  <select
-                    value={SCHOOL_CLASSES.includes(studentClass) ? studentClass : (studentClass === "" ? "" : "other")}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "other") {
-                        setStudentClass("কাস্টম শ্রেণি");
-                      } else {
-                        setStudentClass(val);
-                      }
-                    }}
-                    className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-black outline-none transition font-semibold text-slate-800"
-                    id="student-class-field-select"
-                  >
-                    <option value="">শ্রেণি নির্বাচন...</option>
-                    {SCHOOL_CLASSES.map(cls => (
-                      <option key={cls} value={cls}>{cls} শ্রেণি</option>
-                    ))}
-                    <option value="other">অন্যান্য (Custom)...</option>
-                  </select>
-                  
-                  {!SCHOOL_CLASSES.includes(studentClass) && studentClass !== "" && (
-                    <input
-                      type="text"
-                      value={studentClass}
-                      onChange={(e) => setStudentClass(e.target.value)}
-                      className="w-full mt-1.5 px-3 py-1.5 text-xs bg-amber-50 border border-amber-200 rounded-lg focus:bg-white focus:border-black outline-none transition font-bold text-amber-900"
-                      placeholder="হাতে টাইপ করুন..."
-                      id="student-class-field"
-                    />
+                  {studentsInCurrentClass.length > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      ✓ {toBnNum(studentsInCurrentClass.length)} জন শিক্ষার্থী
+                    </span>
                   )}
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">রোল নম্বর (Roll)</label>
+
+                <select
+                  value={SCHOOL_CLASSES.includes(selectedClassCanonical) ? selectedClassCanonical : (selectedClassCanonical === "" ? "" : "other")}
+                  onChange={(e) => handleClassSelect(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-white border border-indigo-200 rounded-lg focus:bg-white focus:border-indigo-600 outline-none transition font-bold text-indigo-950 cursor-pointer"
+                  id="student-class-field-select"
+                >
+                  <option value="">-- শ্রেণি বাছাই করুন --</option>
+                  {SCHOOL_CLASSES.map(cls => {
+                    const count = getStudentsForClass(cls).length;
+                    return (
+                      <option key={cls} value={cls}>
+                        {cls} শ্রেণি {count > 0 ? `(${toBnNum(count)} জন)` : ""}
+                      </option>
+                    );
+                  })}
+                  <option value="other">অন্যান্য (কাস্টম শ্রেণি)...</option>
+                </select>
+
+                {!SCHOOL_CLASSES.includes(selectedClassCanonical) && selectedClassCanonical !== "" && (
                   <input
                     type="text"
-                    value={studentRoll}
-                    onChange={(e) => setStudentRoll(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-black outline-none transition text-center font-bold"
-                    placeholder="যেমন: ০৫"
-                    id="student-roll-field"
+                    value={studentClass}
+                    onChange={(e) => setStudentClass(e.target.value)}
+                    className="w-full mt-2 px-3 py-1.5 text-xs bg-amber-50 border border-amber-200 rounded-lg focus:bg-white focus:border-black outline-none transition font-bold text-amber-900"
+                    placeholder="শ্রেণির নাম হাতে লিখুন..."
+                    id="student-class-field"
                   />
+                )}
+
+                {/* Quick Class Pills */}
+                <div className="flex flex-wrap gap-1 mt-2.5">
+                  {["প্লে", "নার্সারি", "কেজি", "প্রথম", "দ্বিতীয়", "তৃতীয়", "চতুর্থ", "পঞ্চম", "ষষ্ঠ", "সপ্তম", "অষ্টম"].map(cls => {
+                    const isAct = selectedClassCanonical === cls;
+                    return (
+                      <button
+                        key={cls}
+                        type="button"
+                        onClick={() => handleClassSelect(cls)}
+                        className={`text-[10px] px-2 py-0.5 rounded-md font-semibold transition cursor-pointer border ${
+                          isAct 
+                            ? "bg-indigo-600 text-white border-indigo-600 font-bold shadow-xs" 
+                            : "bg-white hover:bg-indigo-50 text-slate-700 border-slate-200"
+                        }`}
+                      >
+                        {cls}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* STEP 2: ROLL NUMBER & STUDENT AUTO-FIND */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">২</span>
+                    <span>রোল নম্বর দিন (Enter Roll):</span>
+                  </label>
+                  <span className="text-[10px] text-indigo-700 font-bold">রোল দিলেই ফরম চলে আসবে</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {/* Roll Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={studentRoll}
+                      onChange={(e) => handleRollInput(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 outline-none transition font-bold text-center text-slate-900"
+                      placeholder="রোল যেমন: ১ বা ০৫"
+                      id="student-roll-field"
+                    />
+                    {matchedStudent && (
+                      <span className="absolute right-2 top-2.5 text-emerald-600" title="শিক্ষার্থী পাওয়া গেছে">
+                        <CheckCircle className="w-4 h-4" />
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Student Dropdown for current class */}
+                  {studentsInCurrentClass.length > 0 ? (
+                    <div>
+                      <select
+                        value={matchedStudent ? matchedStudent.roll : ""}
+                        onChange={(e) => {
+                          const targetRoll = e.target.value;
+                          if (targetRoll) {
+                            const s = studentsInCurrentClass.find(x => x.roll === targetRoll);
+                            if (s) handleSelectStudent(s);
+                          }
+                        }}
+                        className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:border-indigo-600 outline-none font-semibold text-slate-800"
+                      >
+                        <option value="">-- তালিকা থেকে রোল বাছুন ({toBnNum(studentsInCurrentClass.length)} জন) --</option>
+                        {studentsInCurrentClass.map(s => (
+                          <option key={s.roll} value={s.roll}>
+                            রোল {toBnNum(s.roll)}: {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-slate-500 italic flex items-center">
+                      এই শ্রেণিতে তালিকাভুক্ত নেই, হাতে রোল লিখুন।
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick Roll Selector Chips */}
+                {studentsInCurrentClass.length > 0 && (
+                  <div className="pt-1">
+                    <div className="text-[10px] text-slate-500 font-semibold mb-1 flex items-center gap-1">
+                      <span>ক্লিক করে দ্রুত রোল নির্বাচন করুন:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pr-1">
+                      {studentsInCurrentClass.map(s => {
+                        const isSelected = matchedStudent && normalizeRollDigits(matchedStudent.roll) === normalizeRollDigits(s.roll);
+                        return (
+                          <button
+                            key={s.roll}
+                            type="button"
+                            onClick={() => handleSelectStudent(s)}
+                            className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold transition cursor-pointer border ${
+                              isSelected
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-105"
+                                : "bg-white hover:bg-indigo-50 text-slate-700 border-slate-200"
+                            }`}
+                            title={`${s.name} (রোল: ${toBnNum(s.roll)})`}
+                          >
+                            {toBnNum(s.roll)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* STEP 3: AUTO-LOADED STUDENT NAME & PHOTO UPLOAD */}
+              <div className={`p-3.5 rounded-xl border transition-all ${
+                matchedStudent 
+                  ? "bg-emerald-50/60 border-emerald-300 shadow-2xs" 
+                  : "bg-slate-50 border-slate-200"
+              }`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">৩</span>
+                      <label className="text-xs font-bold text-slate-800">
+                        {matchedStudent ? "✓ নির্দিষ্ট শিক্ষার্থীর ফরম লোড হয়েছে:" : "শিক্ষার্থীর নাম (Name):"}
+                      </label>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={studentName}
+                      onChange={(e) => setStudentName(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:border-indigo-600 focus:bg-white outline-none transition font-bold text-slate-900"
+                      placeholder="যেমন: আহমেদ হাসান"
+                      id="student-name-field"
+                    />
+
+                    {matchedStudent && (
+                      <div className="mt-1.5 text-[11px] text-emerald-800 font-bold flex items-center gap-1.5">
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>{studentClass} | রোল {toBnNum(studentRoll)} | {studentName}-এর নিজস্ব ফরম এখন সক্রিয়।</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Student Photo Upload Frame */}
+                  <div className="flex flex-col items-center shrink-0">
+                    <div
+                      onClick={() => photoInputRef.current?.click()}
+                      className="w-14 h-16 rounded-lg border-2 border-dashed border-indigo-300 hover:border-indigo-600 bg-white overflow-hidden flex flex-col items-center justify-center cursor-pointer shadow-xs transition group relative"
+                      title="শিক্ষার্থীর ছবি আপলোড বা পরিবর্তন করতে ক্লিক করুন"
+                    >
+                      {studentPhoto ? (
+                        <img
+                          src={studentPhoto}
+                          alt={studentName}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-1 text-center">
+                          <Camera className="w-4 h-4 text-indigo-500 mb-0.5 group-hover:scale-110 transition" />
+                          <span className="text-[7.5px] font-bold text-indigo-700 leading-tight">ছবি আপলোড</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        ref={photoInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePhotoUpload}
+                      />
+                    </div>
+                    {studentPhoto ? (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="text-[9px] text-rose-600 hover:underline mt-0.5 font-medium cursor-pointer"
+                      >
+                        ছবি মুছুন
+                      </button>
+                    ) : (
+                      <span className="text-[8px] text-slate-400 mt-0.5 font-semibold">পাসপোর্ট সাইজ</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -2122,6 +2527,46 @@ export default function App() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Performance Analyzer & Next Month Goal Planner Card */}
+          <div className="bg-gradient-to-br from-indigo-50/95 via-purple-50/50 to-amber-50/60 p-4.5 rounded-xl border border-indigo-250 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-indigo-950 font-bold text-xs">
+                <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <span>পারফরম্যান্স বিশ্লেষণ ও আগামী মাসের প্রস্তাবনা</span>
+              </div>
+              <span className="text-[10px] font-black text-amber-900 bg-amber-200/80 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                <Sparkles className="w-3 h-3 text-amber-700" />
+                <span>স্মার্ট লক্ষ্য</span>
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              {studentName ? (
+                <>
+                  <strong className="text-indigo-900">{studentName}</strong>-এর বিগত মাসগুলোর অভ্যাস, সালাত, ভোর ০৫:০০ ঘুমজাগা ও অধ্যয়নের ধারাবাহিকতা বিশ্লেষণ করে আগামী মাসের রুটিনে স্বয়ংক্রিয় লক্ষ্য ও উপদেশ প্রস্তুত করুন।
+                </>
+              ) : (
+                "শ্রেণি ও রোল সিলেক্ট করার পর শিক্ষার্থীর পূর্ববর্তী মাসগুলোর অভ্যাস, সালাত ও অধ্যয়ন বিশ্লেষণ করে আগামী মাসের জন্য স্বয়ংক্রিয় লক্ষ্য ও উপদেশ প্রস্তাব প্রস্তুত করুন।"
+              )}
+            </p>
+
+            {performanceApplyMsg && (
+              <div className="p-2.5 bg-emerald-100/90 border border-emerald-300 rounded-lg text-xs font-bold text-emerald-900 flex items-center gap-2 shadow-2xs">
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{performanceApplyMsg}</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowPerformanceModal(true)}
+              className="w-full py-2.5 px-3.5 bg-gradient-to-r from-indigo-600 via-indigo-650 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
+            >
+              <TrendingUp className="w-4 h-4 text-amber-300" />
+              <span>📊 পূর্ববর্তী পারফরম্যান্স বিশ্লেষণ ও লক্ষ্য প্রস্তাবনা</span>
+            </button>
           </div>
 
           {/* Persistent Cloud Database List & Sync */}
@@ -6050,6 +6495,22 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
           </p>
         </div>
       </footer>
+
+      {/* Performance Analysis & Next Month Goal Planner Modal */}
+      <PerformanceAnalyzerModal
+        isOpen={showPerformanceModal}
+        onClose={() => setShowPerformanceModal(false)}
+        studentName={studentName}
+        studentClass={studentClass}
+        studentRoll={studentRoll}
+        currentMonth={selectedMonth}
+        savedRoutines={savedRoutines}
+        competencies={competencies}
+        currentRows={rows}
+        onApplyGoalsAndAdvice={handleApplyPerformanceGoals}
+        learningStyle={learningStyle}
+        behavioralPattern={behavioralPattern}
+      />
 
       {showIframePrintModal && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm no-print">
