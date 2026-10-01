@@ -46,7 +46,8 @@ import {
   BellRing,
   LifeBuoy,
   Camera,
-  Upload
+  Upload,
+  Home
 } from "lucide-react";
 import { db } from "./firebase";
 import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
@@ -54,6 +55,14 @@ import StudentDashboard from "./components/StudentDashboard";
 import AuthPortal from "./components/AuthPortal";
 import SupportTroubleshooter from "./components/SupportTroubleshooter";
 import { PerformanceAnalyzerModal } from "./components/PerformanceAnalyzerModal";
+import { AnnualHolidaysModal } from "./components/AnnualHolidaysModal";
+import { HomeVisitManager } from "./components/HomeVisitManager";
+import { HomeVisitRecord, INITIAL_SAMPLE_VISITS } from "./homeVisitData";
+import { 
+  SchoolHoliday, 
+  DEFAULT_BANGLADESH_SCHOOL_HOLIDAYS_2026, 
+  getHolidayForDate 
+} from "./holidayData";
 import {
   slidesForStudents,
   slidesForTeachers,
@@ -405,8 +414,8 @@ export default function App() {
     localStorage.removeItem("app_global_user");
   };
 
-  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard vs. Support Troubleshooter
-  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard" | "troubleshooter">("routine");
+  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard vs. Support Troubleshooter vs. Home Visits
+  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard" | "troubleshooter" | "home_visits">("routine");
 
   // Supabase & Cloud Integrations states
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("supabase_url") || "");
@@ -635,6 +644,105 @@ export default function App() {
     setTimeout(() => {
       setPerformanceApplyMsg("");
     }, 6000);
+  };
+
+  // School Annual Holidays Upload & Management State
+  const [showHolidaysModal, setShowHolidaysModal] = useState(false);
+  const [schoolHolidays, setSchoolHolidays] = useState<SchoolHoliday[]>(() => {
+    try {
+      const local = localStorage.getItem("school_annual_holidays");
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn("Failed to load local school holidays", e);
+    }
+    return DEFAULT_BANGLADESH_SCHOOL_HOLIDAYS_2026;
+  });
+  const [autoHighlightHolidays, setAutoHighlightHolidays] = useState<boolean>(() => {
+    const saved = localStorage.getItem("auto_highlight_holidays");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const handleToggleAutoHighlight = (enabled: boolean) => {
+    setAutoHighlightHolidays(enabled);
+    localStorage.setItem("auto_highlight_holidays", enabled ? "true" : "false");
+  };
+
+  const handleSaveSchoolHolidays = async (updated: SchoolHoliday[]) => {
+    setSchoolHolidays(updated);
+    localStorage.setItem("school_annual_holidays", JSON.stringify(updated));
+    try {
+      const holidaysDocRef = doc(db, "school_holidays", "annual_calendar");
+      await setDoc(holidaysDocRef, {
+        holidays: updated,
+        academicYear: "2026",
+        updatedAt: serverTimestamp(),
+        updatedBy: globalRole || "teacher"
+      });
+    } catch (err) {
+      console.warn("Error saving school holidays to Firestore:", err);
+    }
+  };
+
+  // Teachers' Surprise Home Visits & Counseling State
+  const [homeVisits, setHomeVisits] = useState<HomeVisitRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem("school_home_visits");
+      return saved ? JSON.parse(saved) : INITIAL_SAMPLE_VISITS;
+    } catch {
+      return INITIAL_SAMPLE_VISITS;
+    }
+  });
+
+  const handleSaveHomeVisit = async (visit: HomeVisitRecord) => {
+    setHomeVisits(prev => {
+      const exists = prev.some(v => v.id === visit.id);
+      const updated = exists ? prev.map(v => v.id === visit.id ? visit : v) : [visit, ...prev];
+      localStorage.setItem("school_home_visits", JSON.stringify(updated));
+      return updated;
+    });
+
+    try {
+      const docRef = doc(db, "home_visits", visit.id);
+      await setDoc(docRef, {
+        ...visit,
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.warn("Error saving home visit to Firestore:", err);
+    }
+  };
+
+  const handleDeleteHomeVisit = async (id: string) => {
+    setHomeVisits(prev => {
+      const updated = prev.filter(v => v.id !== id);
+      localStorage.setItem("school_home_visits", JSON.stringify(updated));
+      return updated;
+    });
+
+    try {
+      const docRef = doc(db, "home_visits", id);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.warn("Error deleting home visit from Firestore:", err);
+    }
+  };
+
+  const handleApplyHolidaysToRoutineNotes = (holidaysList: SchoolHoliday[]) => {
+    const calConfig = getMonthCalendarConfig(selectedMonth);
+    setRows(prev => prev.map(row => {
+      const holiday = getHolidayForDate(holidaysList, calConfig.year, calConfig.monthIdx, row.date);
+      if (holiday) {
+        return {
+          ...row,
+          dailyGoal: row.dailyGoal || `🌴 ছুটির দিন: ${holiday.title}`,
+          dailyNote: row.dailyNote || `বিদ্যালয় ছুটির দিন (${holiday.title})`
+        };
+      }
+      return row;
+    }));
   };
 
   const handlePrint = () => {
@@ -923,6 +1031,59 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Realtime synchronization for School Annual Holidays
+  useEffect(() => {
+    const holidaysDocRef = doc(db, "school_holidays", "annual_calendar");
+    const unsubHolidays = onSnapshot(holidaysDocRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data && Array.isArray(data.holidays) && data.holidays.length > 0) {
+          setSchoolHolidays(data.holidays);
+          localStorage.setItem("school_annual_holidays", JSON.stringify(data.holidays));
+        }
+      }
+    }, (err) => {
+      console.warn("Firestore school_holidays snapshot listener warning:", err);
+    });
+    return () => unsubHolidays();
+  }, []);
+
+  // Realtime synchronization for Teachers' Surprise Home Visits
+  useEffect(() => {
+    const visitsColRef = collection(db, "home_visits");
+    const unsubVisits = onSnapshot(visitsColRef, (snapshot) => {
+      if (!snapshot.empty) {
+        const loaded: HomeVisitRecord[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          loaded.push({
+            id: docSnap.id,
+            ...data
+          } as HomeVisitRecord);
+        });
+        loaded.sort((a, b) => (b.visitDate || "").localeCompare(a.visitDate || ""));
+        setHomeVisits(loaded);
+        localStorage.setItem("school_home_visits", JSON.stringify(loaded));
+      }
+    }, (err) => {
+      console.warn("Firestore home_visits snapshot listener warning:", err);
+    });
+    return () => unsubVisits();
+  }, []);
+
+  // Compute school holidays falling in the currently selected routine month
+  const currentMonthCalConfig = getMonthCalendarConfig(selectedMonth);
+  const thisMonthHolidays = useMemo(() => {
+    const list: { day: number; title: string; category: string }[] = [];
+    for (let d = 1; d <= daysCount; d++) {
+      const h = getHolidayForDate(schoolHolidays, currentMonthCalConfig.year, currentMonthCalConfig.monthIdx, d);
+      if (h) {
+        list.push({ day: d, title: h.title, category: h.category });
+      }
+    }
+    return list;
+  }, [schoolHolidays, currentMonthCalConfig.year, currentMonthCalConfig.monthIdx, daysCount]);
 
   useEffect(() => {
     if (studentName && studentClass && studentRoll) {
@@ -2157,6 +2318,36 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             <button
+              type="button"
+              onClick={() => setActiveTab("home_visits")}
+              className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+              title="শিক্ষকদের আচমকা বাড়ি পরিদর্শন ফরম ও ডাটাবেস"
+              id="home-visits-top-btn"
+            >
+              <Home className="w-3.5 h-3.5 text-emerald-200" />
+              <span>আচমকা বাড়ি পরিদর্শন</span>
+              <span className="ml-0.5 px-1.5 py-0.2 bg-white text-emerald-900 text-[10px] font-black rounded-full shadow-2xs font-mono">
+                {toBnNum(homeVisits.length)}টি
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowHolidaysModal(true)}
+              className="px-3.5 py-2 bg-gradient-to-r from-rose-600 via-rose-650 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+              title="বিদ্যালয়ের বাৎসরিক ছুটির তালিকা আপলোড ও স্বয়ংক্রিয় মার্কিং ব্যবস্থাপনা"
+              id="annual-holidays-btn"
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-200" />
+              <span>বিদ্যালয়ের বাৎসরিক ছুটি</span>
+              {thisMonthHolidays.length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 bg-white text-rose-850 text-[10px] font-black rounded-full shadow-2xs">
+                  {toBnNum(thisMonthHolidays.length)}টি
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={resetAllData}
               className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:text-red-650 transition-colors flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
               id="reset-state-btn"
@@ -2567,6 +2758,110 @@ export default function App() {
               <TrendingUp className="w-4 h-4 text-amber-300" />
               <span>📊 পূর্ববর্তী পারফরম্যান্স বিশ্লেষণ ও লক্ষ্য প্রস্তাবনা</span>
             </button>
+          </div>
+
+          {/* School Annual Holidays & Calendar Management Card */}
+          <div className="bg-gradient-to-br from-rose-50/90 via-amber-50/40 to-slate-50 p-4.5 rounded-xl border border-rose-250 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-rose-950 font-bold text-xs">
+                <Calendar className="w-4 h-4 text-rose-600" />
+                <span>বিদ্যালয়ের বাৎসরিক ছুটির তালিকা</span>
+              </div>
+              <span className="text-[10px] font-black text-rose-800 bg-rose-200/80 border border-rose-300 px-2 py-0.5 rounded-full font-mono shadow-2xs">
+                {toBnNum(schoolHolidays.length)} দিন
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              শিক্ষকরা বিদ্যালয়ের বাৎসরিক ছুটির তালিকা আপলোড বা সম্পাদনা করতে পারবেন; রুটিনের নির্দিষ্ট দিনগুলোতে স্বয়ংক্রিয়ভাবে <strong>'ছুটির দিন'</strong> হিসেবে মার্ক ও হাইলাইট থাকবে।
+            </p>
+
+            {/* Current Month Holidays Preview */}
+            <div className="bg-white/90 border border-rose-200 rounded-lg p-2.5 text-xs space-y-1.5">
+              <div className="flex items-center justify-between font-bold text-slate-700 text-[11px]">
+                <span>চলতি মাস ({selectedMonth}):</span>
+                <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-mono font-bold">
+                  {toBnNum(thisMonthHolidays.length)}টি ছুটির দিন
+                </span>
+              </div>
+              
+              {thisMonthHolidays.length > 0 ? (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {thisMonthHolidays.slice(0, 3).map((h, i) => (
+                    <span key={i} className="text-[10px] bg-rose-50/90 border border-rose-250 text-rose-900 px-2 py-0.5 rounded font-bold truncate max-w-[170px]" title={h.title}>
+                      🌴 {toBnNum(h.day)}: {h.title}
+                    </span>
+                  ))}
+                  {thisMonthHolidays.length > 3 && (
+                    <span className="text-[10px] text-slate-500 font-bold self-center">
+                      +{toBnNum(thisMonthHolidays.length - 3)} আরও
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-400 italic">এই মাসে নির্ধারিত কোনো ছুটি নেই।</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-700 select-none">
+                <input
+                  type="checkbox"
+                  checked={autoHighlightHolidays}
+                  onChange={(e) => handleToggleAutoHighlight(e.target.checked)}
+                  className="w-3.5 h-3.5 text-rose-600 rounded focus:ring-rose-500 cursor-pointer"
+                />
+                <span>রুটিনে হাইলাইট সক্রিয়</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setShowHolidaysModal(true)}
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>তালিকা আপলোড / এডিট</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Teachers' Surprise Home Visits & Desk Inspection Card */}
+          <div className="bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-slate-50 p-4.5 rounded-xl border border-emerald-250 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-950 font-bold text-xs">
+                <Home className="w-4 h-4 text-emerald-600" />
+                <span>শিক্ষকদের আচমকা বাড়ি পরিদর্শন</span>
+              </div>
+              <span className="text-[10px] font-black text-emerald-800 bg-emerald-200/80 border border-emerald-300 px-2 py-0.5 rounded-full font-mono shadow-2xs">
+                {toBnNum(homeVisits.length)}টি এন্ট্রি
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              শিক্ষার্থীরা যেন পড়ার টেবিলে সবসময় সজাগ থাকে। শিক্ষকরা মাঠপর্যায়ে নিয়ে যাওয়ার জন্য প্রিন্ট ফরম প্রিন্ট করতে এবং অফিসে ফিরে এন্ট্রি দিতে পারবেন।
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("home_visits")}
+                className="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 text-center"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>ভিজিট ড্যাশবোর্ড</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("home_visits");
+                  setTimeout(() => window.print(), 200);
+                }}
+                className="py-2 px-2.5 bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-900 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 text-center"
+              >
+                <Printer className="w-3.5 h-3.5 text-emerald-700" />
+                <span>🖨️ ফিল্ড ফরম প্রিন্ট</span>
+              </button>
+            </div>
           </div>
 
           {/* Persistent Cloud Database List & Sync */}
@@ -3052,6 +3347,22 @@ export default function App() {
             <span>📅 মাসিক রুটিন গ্রিড</span>
           </button>
 
+          {/* HOME VISITS & COUNSELING TAB - VISIBLE FOR ALL */}
+          <button
+            onClick={() => setActiveTab("home_visits")}
+            className={`flex-1 min-w-[150px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "home_visits"
+                ? "bg-gradient-to-r from-emerald-700 to-teal-800 text-white shadow-md border border-emerald-300 ring-2 ring-emerald-400"
+                : "bg-emerald-50/80 text-emerald-950 hover:bg-emerald-100 border border-emerald-200"
+            }`}
+          >
+            <Home className="w-4 h-4 text-emerald-600" />
+            <span>🏠 আচমকা বাড়ি পরিদর্শন</span>
+            <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded shadow-2xs font-mono">
+              {toBnNum(homeVisits.length)}টি
+            </span>
+          </button>
+
           {/* TABS FOR MASTER AND DEVELOPER ROLES */}
           {(globalRole === "master" || globalRole === "developer") && (
             <>
@@ -3181,13 +3492,46 @@ export default function App() {
                 </div>
               </div>
 
+              {/* School Holidays Banner for Selected Month */}
+              {autoHighlightHolidays && thisMonthHolidays.length > 0 && (
+                <div className="no-print w-full max-w-[21cm] mb-4 bg-gradient-to-r from-rose-50/95 via-amber-50/70 to-rose-50/95 border border-rose-250 p-3.5 rounded-xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-600 shrink-0">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-rose-950 flex items-center gap-2">
+                        <span>চলতি মাসে ({selectedMonth}) বিদ্যালয়ের নির্ধারিত ছুটির দিনসমূহ</span>
+                        <span className="text-[10px] bg-rose-600 text-white font-mono px-2 py-0.5 rounded-full font-black">
+                          {toBnNum(thisMonthHolidays.length)} দিন
+                        </span>
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {thisMonthHolidays.map((h, idx) => (
+                          <span key={idx} className="text-[10.5px] bg-white/95 border border-rose-200 text-rose-900 px-2 py-0.5 rounded-md font-bold shadow-2xs">
+                            🌴 {toBnNum(h.day)} তারিখ: {h.title}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowHolidaysModal(true)}
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black rounded-lg transition shrink-0 cursor-pointer shadow-2xs"
+                  >
+                    ছুটির তালিকা ও আপলোড
+                  </button>
+                </div>
+              )}
+
               {/* Grid Legend & Instructions */}
               <div className="no-print w-full max-w-[21cm] mb-4 bg-slate-50/80 border border-slate-200 p-4 rounded-xl shadow-sm">
                 <h4 className="text-xs font-bold text-slate-800 mb-3 flex items-center gap-2">
                   <Info className="w-4 h-4 text-indigo-500 shrink-0" />
                   <span>গ্রিড নির্দেশিকা ও আইকন পরিচিতি (Parent-Student Legend & Guide)</span>
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   {/* Legend item 1: Prayers */}
                   <div className="bg-white p-3 rounded-lg border border-slate-150 flex items-start gap-2.5">
                     <div className="flex gap-0.5 shrink-0 mt-0.5">
@@ -3245,6 +3589,21 @@ export default function App() {
                       </h5>
                       <p className="text-[10px] text-slate-500 leading-normal mt-0.5">
                         মাসিক ক্যালেন্ডারের দিন ও সাপ্তাহিক বার অনুযায়ী আপনার সকল প্রশংসনীয় কার্যকলাপের সময়ানুগ ট্র্যাকিং ও রেফারেন্স নিশ্চিত করে।
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Legend item 5: School Holidays */}
+                  <div className="bg-white p-3 rounded-lg border border-rose-200 flex items-start gap-2.5">
+                    <div className="flex shrink-0 mt-0.5 bg-rose-50 text-rose-600 border border-rose-300 p-1 rounded-md w-6 h-6 items-center justify-center font-bold text-xs">
+                      🌴
+                    </div>
+                    <div>
+                      <h5 className="text-[11px] font-bold text-slate-900 flex items-center gap-1.5">
+                        <span>ছুটির দিন (School Holiday)</span>
+                      </h5>
+                      <p className="text-[10px] text-slate-500 leading-normal mt-0.5">
+                        আপলোডকৃত বাৎসরিক ছুটির তালিকা অনুযায়ী দিনগুলোতে গোলাপি আভা ও ব্যাজ দ্বারা 'ছুটির দিন' হিসেবে স্বয়ংক্রিয়ভাবে চিহ্নিত থাকে।
                       </p>
                     </div>
                   </div>
@@ -4021,6 +4380,8 @@ export default function App() {
                         const isFriday = wkday.short === "শুক্র";
                         const isExpanded = !!expandedDays[row.date];
                         const isToday = isViewingCurrentMonth && row.date === currentCal.todayDate;
+                        const currentHoliday = autoHighlightHolidays ? getHolidayForDate(schoolHolidays, currentMonthCalConfig.year, currentMonthCalConfig.monthIdx, row.date) : undefined;
+                        const isHoliday = !!currentHoliday;
 
                         let rowScore = 0;
                         if (hasPrayersTracked) {
@@ -4047,17 +4408,39 @@ export default function App() {
 
                         return (
                           <Fragment key={row.date}>
-                            <tr className={isToday ? "bg-amber-100/70 text-amber-950 font-bold border-2 border-amber-500 shadow-xs" : (isFriday ? "bg-red-50/40 text-red-955 font-bold" : (themeMode === "professional-polish" ? "hover:bg-slate-50/30 transition-colors" : "bg-white"))}>
+                            <tr 
+                              className={
+                                isToday 
+                                  ? "bg-amber-100/70 text-amber-950 font-bold border-2 border-amber-500 shadow-xs" 
+                                  : (isHoliday
+                                      ? "bg-rose-50/75 text-rose-950 font-bold hover:bg-rose-100/60 transition-colors"
+                                      : (isFriday 
+                                          ? "bg-red-50/40 text-red-955 font-bold" 
+                                          : (themeMode === "professional-polish" ? "hover:bg-slate-50/30 transition-colors" : "bg-white")
+                                        )
+                                    )
+                              }
+                              title={isHoliday ? `বিদ্যালয়ের নির্ধারিত ছুটির দিন: ${currentHoliday.title}` : undefined}
+                            >
                               {/* 1. Date & Day Name */}
-                              <td className={`border ${isToday ? "border-amber-500 bg-amber-200/90 text-amber-950 font-black" : (themeMode === "professional-polish" ? "border-slate-300 bg-slate-50/30" : "border-black")} font-extrabold text-black ${sizes.cellPadding} ${sizes.fontSize} select-none relative`}>
+                              <td className={`border ${isToday ? "border-amber-500 bg-amber-200/90 text-amber-950 font-black" : (isHoliday ? "border-rose-300 bg-rose-100/80 text-rose-950" : (themeMode === "professional-polish" ? "border-slate-300 bg-slate-50/30" : "border-black"))} font-extrabold text-black ${sizes.cellPadding} ${sizes.fontSize} select-none relative`}>
                                 <div className="flex flex-col items-center justify-center leading-none py-0.5">
                                   <span className="font-black text-[13px]">{toBnNum(row.date)}</span>
-                                  <span className={`text-[9.2px] font-black mt-0.5 ${isToday ? "text-amber-900" : (isFriday ? "text-red-700 font-bold" : (themeMode === "professional-polish" ? "text-slate-500" : "text-gray-600"))}`}>
+                                  <span className={`text-[9.2px] font-black mt-0.5 ${isToday ? "text-amber-900" : (isHoliday ? "text-rose-850 font-black" : (isFriday ? "text-red-700 font-bold" : (themeMode === "professional-polish" ? "text-slate-500" : "text-gray-600")))}`}>
                                     ({wkday.short})
                                   </span>
                                   {isToday && (
                                     <span className="mt-1 px-1.5 py-0.2 bg-amber-600 text-white text-[8px] font-black rounded-full shadow-2xs tracking-wider">
                                       আজ
+                                    </span>
+                                  )}
+                                  {isHoliday && (
+                                    <span 
+                                      className="mt-0.5 px-1 py-0.2 bg-rose-600 text-white text-[7.5px] font-black rounded shadow-2xs tracking-tight flex items-center justify-center gap-0.5 max-w-[56px] truncate print:bg-rose-700 print:text-white"
+                                      title={`ছুটির দিন: ${currentHoliday.title}${currentHoliday.description ? ` (${currentHoliday.description})` : ""}`}
+                                    >
+                                      <span className="print:hidden text-[7px]">🌴</span>
+                                      <span className="truncate">ছুটি</span>
                                     </span>
                                   )}
                                 </div>
@@ -4330,6 +4713,21 @@ export default function App() {
                                         </span>
                                       </div>
                                     </div>
+
+                                    {isHoliday && (
+                                      <div className="flex items-center gap-2 bg-rose-50/95 border border-rose-250 rounded-lg p-2.5 text-xs text-rose-900 shadow-2xs">
+                                        <span className="text-base">🌴</span>
+                                        <div className="flex-1">
+                                          <span className="font-extrabold text-rose-950">বিদ্যালয়ের ছুটির দিন: {currentHoliday.title}</span>
+                                          {currentHoliday.description && (
+                                            <span className="text-rose-700 ml-1.5 font-medium">({currentHoliday.description})</span>
+                                          )}
+                                          <span className="ml-2 text-[10px] bg-rose-200/80 text-rose-900 font-bold px-1.5 py-0.5 rounded">
+                                            ক্যাটাগরি: {currentHoliday.category}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
 
                                     {(!row.dailyGoal || !row.dailyGoal.trim()) && (
                                       <motion.div 
@@ -6480,6 +6878,29 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
             </div>
           )}
 
+          {activeTab === "home_visits" && (
+            <div className="w-full animate-fadeIn">
+              <HomeVisitManager
+                visits={homeVisits}
+                onSaveVisit={handleSaveHomeVisit}
+                onDeleteVisit={handleDeleteHomeVisit}
+                currentStudent={{
+                  name: studentName,
+                  class: studentClass,
+                  roll: studentRoll
+                }}
+                schoolName="ডি-লিকন মডেল একাডেমী"
+                teacherName={globalUserInfo?.name || "শ্রেণি শিক্ষক"}
+                onSelectStudentForRoutine={(name, sClass, roll) => {
+                  setStudentName(name);
+                  setStudentClass(sClass);
+                  setStudentRoll(roll);
+                  setActiveTab("routine");
+                }}
+              />
+            </div>
+          )}
+
         </div>
 
       </div>
@@ -6510,6 +6931,18 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
         onApplyGoalsAndAdvice={handleApplyPerformanceGoals}
         learningStyle={learningStyle}
         behavioralPattern={behavioralPattern}
+      />
+
+      {/* Annual School Holidays Modal */}
+      <AnnualHolidaysModal
+        isOpen={showHolidaysModal}
+        onClose={() => setShowHolidaysModal(false)}
+        holidays={schoolHolidays}
+        onSaveHolidays={handleSaveSchoolHolidays}
+        onApplyHolidaysToRoutineNotes={handleApplyHolidaysToRoutineNotes}
+        currentSelectedMonth={selectedMonth}
+        autoHighlightEnabled={autoHighlightHolidays}
+        onToggleAutoHighlight={handleToggleAutoHighlight}
       />
 
       {showIframePrintModal && (

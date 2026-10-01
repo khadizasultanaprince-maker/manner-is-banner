@@ -21,6 +21,39 @@
         "updatedAt": "timestamp"
       },
       "indexes": []
+    },
+    "school_holidays": {
+      "schema": {
+        "id": "string",
+        "holidays": "array",
+        "academicYear": "string",
+        "updatedAt": "timestamp",
+        "updatedBy": "string"
+      },
+      "indexes": []
+    },
+    "home_visits": {
+      "schema": {
+        "id": "string",
+        "studentName": "string",
+        "studentClass": "string",
+        "studentRoll": "string",
+        "visitDate": "string",
+        "visitTime": "string",
+        "location": "string",
+        "teacherName": "string",
+        "studentState": "string",
+        "studyEnvironment": "string",
+        "parentResponsibility": "string",
+        "counselingNotes": "string",
+        "studentCommitment": "string",
+        "parentRemarks": "string",
+        "followUpDate": "string",
+        "rating": "number",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+      },
+      "indexes": []
     }
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "Bengali Student Monthly Routine Generator",
-  "description": "A professional, A4-sized printable Student Monthly Routine Generator in Bengali designed for offline use (মাসিক রুটিন জেনারেটর).",
+  "description": "A professional, A4-sized printable Student Monthly Routine Generator in Bengali with Annual School Holiday Calendar management and Teachers' Surprise Home Visit & Counseling inspection field sheets (মাসিক রুটিন জেনারেটর ও শিক্ষকদের আচমকা বাড়ি পরিদর্শন ট্র্যাকার).",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -58,8 +58,15 @@ export const studentsByClass: Record<string, Student[]> = {
     { roll: "২১", name: "সারোয়ার মোহাম্মদ" },
     { roll: "২২", name: "তৈয়বা" },
     { roll: "২৩", name: "মেহেদী" },
-    { roll: "২৪", name: "মাবিয়া আক্তার" },
-    { roll: "২৫", name: "মমিতো ইসলাম রাফা" }
+    { roll: "২৪", name: "মারিয়া" },
+    { roll: "২৫", name: "মমিতো ইসলাম রাফা" },
+    { roll: "২৬", name: "তাবাছুম" },
+    { roll: "২৭", name: "আয়েশা" },
+    { roll: "৩০", name: "হাছিবা" },
+    { roll: "৩১", name: "সাকিব" },
+    { roll: "৩২", name: "রাদিয়া" },
+    { roll: "৩৩", name: "জান্নাতি" },
+    { roll: "৩৪", name: "লামিন" }
   ],
   "প্রথম": [
     { roll: "১", name: "শিল্পী" },
@@ -207,3 +214,7 @@ export const studentsByClass: Record<string, Student[]> = {
     { roll: "৬", name: "আঃ রহিম" }
   ]
 };
+
+// Alias to ensure both spellings (নার্সারি and নার্সারী) resolve seamlessly
+studentsByClass["নার্সারী"] = studentsByClass["নার্সারি"];
+

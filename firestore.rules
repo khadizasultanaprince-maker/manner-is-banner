@@ -7,5 +7,11 @@ service cloud.firestore {
     match /student_progress/{document} {
       allow read, write: if true;
     }
+    match /school_holidays/{document} {
+      allow read, write: if true;
+    }
+    match /home_visits/{document} {
+      allow read, write: if true;
+    }
   }
 }
