@@ -60,6 +60,8 @@ import { AnnualHolidaysModal } from "./components/AnnualHolidaysModal";
 import { HomeVisitManager } from "./components/HomeVisitManager";
 import { MonthlyHabitReportCard } from "./components/MonthlyHabitReportCard";
 import { ExcelDataImporterModal } from "./components/ExcelDataImporterModal";
+import { PrintMarginSettingsModal, applyPrintMarginStyles } from "./components/PrintMarginSettingsModal";
+import { PrintingGuideModal } from "./components/PrintingGuideModal";
 import { HomeVisitRecord, INITIAL_SAMPLE_VISITS } from "./homeVisitData";
 import { 
   SchoolHoliday, 
@@ -677,6 +679,21 @@ export default function App() {
   // Excel 10-Class Data Importer State
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [, setStudentsVersion] = useState(0);
+
+  // Print Margin Customization Modal State
+  const [showPrintMarginModal, setShowPrintMarginModal] = useState(false);
+  // Printing Guide & Scale Help Modal State
+  const [showPrintingGuideModal, setShowPrintingGuideModal] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("print_custom_margins_config");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed) applyPrintMarginStyles(parsed);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const handleStudentsUpdated = () => {
@@ -2461,7 +2478,53 @@ export default function App() {
                 }
               </span>
             </button>
+
+            {/* Print Margin & Page Scale Settings Trigger */}
+            <button
+              onClick={() => setShowPrintMarginModal(true)}
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 hover:border-amber-400 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+              title="A4 পেজ মার্জিন ও স্কেল কাস্টমাইজেশন (যাতে কোনো তারিখ কাটা না পড়ে)"
+              id="print-margin-settings-btn"
+            >
+              <Sliders className="w-3.5 h-3.5 text-amber-400" />
+              <span>⚙️ পেজ মার্জিন (mm)</span>
+            </button>
+
+            {/* Printing Guide & Scaling Tips Button */}
+            <button
+              onClick={() => setShowPrintingGuideModal(true)}
+              className="px-3.5 py-2.5 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 border border-indigo-500/40 hover:border-indigo-400 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+              title="প্রিন্টিং গাইড ও স্কেল (Scale) কমানোর নিয়ম দেখুন"
+              id="printing-guide-btn"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-indigo-300" />
+              <span>📘 প্রিন্ট গাইড (স্কেল টিপস)</span>
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* EXCEL IMPORT HELP BANNER (DIRECT UPLOAD ACCESSIBILITY) */}
+      <div className="no-print bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-b border-emerald-500/40 py-2.5 px-4 text-white">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 bg-emerald-600/30 rounded-lg border border-emerald-400/40 text-emerald-400">
+              <FileSpreadsheet className="w-4 h-4" />
+            </span>
+            <div>
+              <span className="font-bold text-emerald-300">১০টি শ্রেণির এক্সেল ফাইল আপলোড করতে চান? </span>
+              <span className="text-slate-300">
+                চ্যাট বক্স থেকে সরাসরি ফাইল না নেওয়া গেলে নিচের সবুজ বাটনে ক্লিক করে আপনার কম্পিউটারের .xlsx ফাইলটি আপলোড করে দিন:
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsExcelModalOpen(true)}
+            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/50 cursor-pointer active:scale-95 transition"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-amber-300" />
+            <span>📊 এক্সেল ফাইল আপলোড ও ১০টি শ্রেণি প্রতিস্থাপন</span>
+          </button>
         </div>
       </div>
 
@@ -6943,6 +7006,25 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
           setProgressSyncMsg(msg);
           setTimeout(() => setProgressSyncMsg(""), 6000);
         }}
+      />
+
+      {/* A4 Print Margin & Page Scale Settings Modal */}
+      <PrintMarginSettingsModal
+        isOpen={showPrintMarginModal}
+        onClose={() => setShowPrintMarginModal(false)}
+        onOpenGuide={() => setShowPrintingGuideModal(true)}
+        onApplyAndPrint={(cfg) => {
+          applyPrintMarginStyles(cfg);
+          setTimeout(() => handlePrint(), 200);
+        }}
+      />
+
+      {/* Printing Guide & Scaling Tips Help Modal */}
+      <PrintingGuideModal
+        isOpen={showPrintingGuideModal}
+        onClose={() => setShowPrintingGuideModal(false)}
+        onOpenMarginSettings={() => setShowPrintMarginModal(true)}
+        onPrintNow={() => setTimeout(() => handlePrint(), 200)}
       />
 
       {showIframePrintModal && (
