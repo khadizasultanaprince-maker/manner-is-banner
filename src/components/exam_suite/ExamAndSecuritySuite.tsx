@@ -21,12 +21,15 @@ import { GateSecurityScanner } from "./GateSecurityScanner";
 import { AdmitCardStudio } from "./AdmitCardStudio";
 import { MarkEntryAndResultSuite } from "./MarkEntryAndResultSuite";
 import { GuardianMeetingManager } from "./GuardianMeetingManager";
+import { GateSMSConfigPanel } from "./GateSMSConfigPanel";
+import { MessageSquare, Settings } from "lucide-react";
 
 export type ExamSuiteTab =
   | "question_paper"
   | "syllabus_notes"
   | "id_cards"
   | "gate_scanner"
+  | "gate_sms_config"
   | "admit_cards"
   | "marks_results"
   | "guardian_meetings";
@@ -75,8 +78,8 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
           </div>
         </div>
 
-        {/* 7-MODULE NAVIGATION TABS BAR */}
-        <div className="mt-6 pt-5 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
+        {/* 8-MODULE NAVIGATION TABS BAR */}
+        <div className="mt-6 pt-5 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
           {/* 1. Question Paper */}
           <button
             onClick={() => setActiveTab("question_paper")}
@@ -149,11 +152,30 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">গেট স্ক্যানার</span>
-              <span className="text-[10px] opacity-75 leading-tight block mt-0.5">অভিভাবক মেসেজিং</span>
+              <span className="text-[10px] opacity-75 leading-tight block mt-0.5">আইডি কার্ড রিডার</span>
             </div>
           </button>
 
-          {/* 5. Exam Admit Cards */}
+          {/* 5. Gate SMS & Automated Notifications Config */}
+          <button
+            onClick={() => setActiveTab("gate_sms_config")}
+            className={`p-3 rounded-xl text-left transition flex flex-col justify-between border cursor-pointer ${
+              activeTab === "gate_sms_config"
+                ? "bg-amber-500 text-slate-950 border-amber-300 shadow-lg ring-2 ring-amber-300"
+                : "bg-slate-900/80 text-slate-300 border-slate-800 hover:bg-slate-800 hover:border-slate-700"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <MessageSquare className={`w-4 h-4 ${activeTab === "gate_sms_config" ? "text-slate-950" : "text-amber-300"}`} />
+              <span className="text-[9px] font-mono opacity-60">০৫</span>
+            </div>
+            <div>
+              <span className="text-xs font-black block leading-tight">এসএমএস কনফিগ</span>
+              <span className="text-[10px] opacity-75 leading-tight block mt-0.5">স্বয়ংক্রিয় এলার্ট সেটিংস</span>
+            </div>
+          </button>
+
+          {/* 6. Exam Admit Cards */}
           <button
             onClick={() => setActiveTab("admit_cards")}
             className={`p-3 rounded-xl text-left transition flex flex-col justify-between border cursor-pointer ${
@@ -164,7 +186,7 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
           >
             <div className="flex items-center justify-between mb-2">
               <FileBadge className="w-4 h-4 text-rose-300" />
-              <span className="text-[9px] font-mono opacity-60">০৫</span>
+              <span className="text-[9px] font-mono opacity-60">০৬</span>
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">এডমিট কার্ড</span>
@@ -172,7 +194,7 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
             </div>
           </button>
 
-          {/* 6. Marks & Result Transcript */}
+          {/* 7. Marks & Result Transcript */}
           <button
             onClick={() => setActiveTab("marks_results")}
             className={`p-3 rounded-xl text-left transition flex flex-col justify-between border cursor-pointer ${
@@ -183,7 +205,7 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
           >
             <div className="flex items-center justify-between mb-2">
               <Award className="w-4 h-4 text-purple-300" />
-              <span className="text-[9px] font-mono opacity-60">০৬</span>
+              <span className="text-[9px] font-mono opacity-60">০৭</span>
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">মার্ক ও ট্রান্সক্রিপ্ট</span>
@@ -191,7 +213,7 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
             </div>
           </button>
 
-          {/* 7. Guardian PTA Meetings */}
+          {/* 8. Guardian PTA Meetings */}
           <button
             onClick={() => setActiveTab("guardian_meetings")}
             className={`p-3 rounded-xl text-left transition flex flex-col justify-between border cursor-pointer ${
@@ -202,7 +224,7 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
           >
             <div className="flex items-center justify-between mb-2">
               <Users className="w-4 h-4 text-pink-300" />
-              <span className="text-[9px] font-mono opacity-60">০৭</span>
+              <span className="text-[9px] font-mono opacity-60">০৮</span>
             </div>
             <div>
               <span className="text-xs font-black block leading-tight">অভিভাবক সভা</span>
@@ -218,6 +240,7 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
         {activeTab === "syllabus_notes" && <SyllabusNotesMaker />}
         {activeTab === "id_cards" && <IDCardStudio />}
         {activeTab === "gate_scanner" && <GateSecurityScanner />}
+        {activeTab === "gate_sms_config" && <GateSMSConfigPanel />}
         {activeTab === "admit_cards" && <AdmitCardStudio />}
         {activeTab === "marks_results" && <MarkEntryAndResultSuite />}
         {activeTab === "guardian_meetings" && <GuardianMeetingManager />}

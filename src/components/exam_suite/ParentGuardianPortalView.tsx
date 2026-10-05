@@ -16,7 +16,11 @@ import {
   Sparkles,
   ArrowRightCircle,
   ArrowLeftCircle,
-  FileCheck2
+  FileCheck2,
+  Volume2,
+  VolumeX,
+  Heart,
+  Radio
 } from "lucide-react";
 import { GateLog, StudentExamRecord, GuardianMeeting, AdmitCard, StudentSecurityProfile } from "./examTypes";
 import { SAMPLE_GATE_LOGS, SAMPLE_EXAM_RECORDS, SAMPLE_GUARDIAN_MEETINGS, SAMPLE_ADMIT_CARDS, SAMPLE_SECURITY_PROFILES } from "./examMockData";
@@ -35,6 +39,7 @@ export const ParentGuardianPortalView: React.FC<ParentGuardianPortalViewProps> =
   studentRoll
 }) => {
   const [activeTab, setActiveTab] = useState<"gate_alerts" | "exam_results" | "id_admit" | "pta_meetings">("gate_alerts");
+  const [voicePlaying, setVoicePlaying] = useState<boolean>(false);
 
   // Gate Notifications for this student
   const [gateNotifs, setGateNotifs] = useState<any[]>(() => {
@@ -53,6 +58,91 @@ export const ParentGuardianPortalView: React.FC<ParentGuardianPortalViewProps> =
       return SAMPLE_GATE_LOGS;
     }
   });
+
+  // Sweet Voice Speech Synthesis helper for Guardian
+  const speakSweetBengaliNotification = (notif?: any) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      alert("আপনার ডিভাইসে ভয়েস অডিও সুবিধা সমর্থিত নয়।");
+      return;
+    }
+
+    try {
+      window.speechSynthesis.cancel();
+      setVoicePlaying(true);
+
+      const targetNotif = notif || gateNotifs[0];
+      const isEntry = targetNotif ? targetNotif.type === "in" : true;
+      const timeStr = targetNotif ? (targetNotif.time || targetNotif.timeOnly || "সকাল ০৭:৪৫") : "সকাল ০৭:৪৫";
+
+      let sweetMessage = "";
+      if (isEntry) {
+        sweetMessage = `আসসালামু আলাইকুম সম্মানিত অভিভাবক। আলহামদুলিল্লাহ! আপনার প্রিয় সন্তান ${studentName}, আজ ${timeStr} এ নিরাপদে ডি-লিকন মডেল একাডেমী ক্যাম্পাসে প্রবেশ করেছে। আপনার সন্তানের মঙ্গলময় ভবিষ্যৎ কামনা করছি।`;
+      } else {
+        sweetMessage = `সম্মানিত অভিভাবক, আপনার প্রিয় সন্তান ${studentName}, সফলভাবে আজকের ক্লাস সম্পন্ন করে বিকাল ${timeStr} এ ক্যাম্পাস ত্যাগ করেছে। নিরাপদে বাড়ি পৌঁছানোর জন্য আপনার সহযোগিতা কামনা করছি।`;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(sweetMessage);
+      utterance.lang = "bn-BD";
+      utterance.pitch = 1.15; // Gentle, sweet pitch
+      utterance.rate = 0.92;  // Polite, calm tempo
+
+      const voices = window.speechSynthesis.getVoices();
+      const bnVoice = voices.find(v => v.lang.includes("bn") || v.lang.includes("Bengali"));
+      if (bnVoice) utterance.voice = bnVoice;
+
+      utterance.onend = () => setVoicePlaying(false);
+      utterance.onerror = () => setVoicePlaying(false);
+
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn("Speech synthesis error:", err);
+      setVoicePlaying(false);
+    }
+  };
+
+  // Guardian Acknowledgement Handler (প্রাপ্তি স্বীকার সূচক বাস্তবতা)
+  const handleAcknowledgeNotification = (notifId: string, ackText: string) => {
+    const ackTime = new Date().toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" });
+
+    // 1. Update local student notifications
+    const updatedNotifs = gateNotifs.map((item, idx) => {
+      const match = (item.id && item.id === notifId) || item.time === notifId || idx.toString() === notifId;
+      if (match) {
+        return {
+          ...item,
+          guardianAcknowledged: true,
+          guardianAcknowledgementText: ackText,
+          guardianAcknowledgedAt: ackTime
+        };
+      }
+      return item;
+    });
+
+    setGateNotifs(updatedNotifs);
+    localStorage.setItem(`student_gate_notifs_${studentId}`, JSON.stringify(updatedNotifs));
+
+    // 2. Update global gate logs in localStorage so school gatekeeper sees it in real time
+    try {
+      const globalRaw = localStorage.getItem("dlikon_gate_logs");
+      if (globalRaw) {
+        const globalLogs = JSON.parse(globalRaw);
+        const updatedGlobal = globalLogs.map((log: any) => {
+          if (log.id === notifId || (log.studentId === studentId && !log.guardianAcknowledged)) {
+            return {
+              ...log,
+              guardianAcknowledged: true,
+              guardianAcknowledgementText: ackText,
+              guardianAcknowledgedAt: ackTime
+            };
+          }
+          return log;
+        });
+        localStorage.setItem("dlikon_gate_logs", JSON.stringify(updatedGlobal));
+      }
+    } catch (e) {
+      console.warn("Global logs update error:", e);
+    }
+  };
 
   // Meeting Urgent Alerts for this student
   const [meetingAlerts, setMeetingAlerts] = useState<any[]>(() => {
@@ -222,6 +312,31 @@ export const ParentGuardianPortalView: React.FC<ParentGuardianPortalViewProps> =
             </span>
           </div>
 
+          {/* SWEET BENGALI VOICE NOTIFICATION PLAYER BANNER */}
+          <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 border border-purple-500/40 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center border border-purple-500/40">
+                <Volume2 className={`w-5 h-5 ${voicePlaying ? "animate-bounce text-amber-300" : ""}`} />
+              </div>
+              <div>
+                <span className="text-xs font-black text-white block">
+                  মিষ্টি মধুর কণ্ঠে আগমন ও প্রস্থান বার্তা
+                </span>
+                <span className="text-[11px] text-purple-200">
+                  অভিভাবক হিসেবে মিষ্টি মধুর বাংলায় আপনার সন্তানের উপস্থিতি ও শুভেচ্ছা শুনুন
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => speakSweetBengaliNotification(gateNotifs[0])}
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95 ring-1 ring-purple-400"
+            >
+              <Volume2 className="w-4 h-4 text-amber-300 animate-pulse" />
+              <span>{voicePlaying ? "🔊 পাঠদান হচ্ছে..." : "🔊 মিষ্টি কণ্ঠে শুনুন"}</span>
+            </button>
+          </div>
+
           <div className="space-y-3">
             {gateNotifs.length === 0 ? (
               <div className="text-center py-8 bg-slate-950/60 rounded-2xl border border-dashed border-slate-700 text-xs text-slate-400">
@@ -245,24 +360,87 @@ export const ParentGuardianPortalView: React.FC<ParentGuardianPortalViewProps> =
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-bold text-xs text-white">
                         {item.title || (item.type === "in" ? "স্কুলে আগমন নিশ্চিতকরণ" : "স্কুল থেকে প্রস্থান")}
                       </span>
-                      <span className="text-[11px] font-mono text-amber-300 font-bold">
-                        {item.time || item.timeOnly}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono text-amber-300 font-bold">
+                          {item.time || item.timeOnly}
+                        </span>
+                        <button
+                          onClick={() => speakSweetBengaliNotification(item)}
+                          className="p-1 text-purple-300 hover:text-amber-300 hover:bg-purple-950/60 rounded transition cursor-pointer"
+                          title="এই বার্তার মিষ্টি ভয়েস শুনুন"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <p className="text-xs text-slate-300 leading-relaxed font-sans bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
                       {item.message || item.notificationMessage}
                     </p>
 
-                    <div className="flex items-center gap-3 text-[10px] text-slate-400 pt-1">
+                    <div className="flex items-center gap-3 text-[10px] text-slate-400 pt-0.5">
                       <span>তারিখ: {item.date || item.dateOnly || "আজ"}</span>
                       <span>•</span>
                       <span className="text-emerald-400 font-bold">✓ SMS ও অ্যাপে সফলভাবে প্রেরিত</span>
+                    </div>
+
+                    {/* GUARDIAN ACKNOWLEDGEMENT & BLESSING (প্রাপ্তি স্বীকার সূচক বাস্তবতা) */}
+                    <div className="pt-2 border-t border-slate-800/80">
+                      {item.guardianAcknowledged ? (
+                        <div className="bg-emerald-950/40 border border-emerald-500/40 p-2.5 rounded-xl flex items-center gap-2 text-xs text-emerald-300 font-bold animate-fadeIn">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>
+                            আপনার প্রাপ্তি স্বীকার বিদ্যালয়ে পৌঁছেছে: "{item.guardianAcknowledgementText || 'আলহামদুলিল্লাহ'}" (ধন্যবাদ ও দোয়া গৃহীত)
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                          <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                            <Heart className="w-3.5 h-3.5 text-rose-400" />
+                            <span>অভিভাবকের প্রাপ্তি স্বীকার ও বিদ্যালয়ে দোয়া/শুভেচ্ছা প্রেরণ:</span>
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() =>
+                                handleAcknowledgeNotification(
+                                  item.id || idx.toString(),
+                                  "❤️ আলহামদুলিল্লাহ, নিরাপদ আগমন নিশ্চিত করেছি"
+                                )
+                              }
+                              className="px-2.5 py-1.5 bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                            >
+                              <span>❤️ আলহামদুলিল্লাহ, নিরাপদ প্রবেশ নিশ্চিত</span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleAcknowledgeNotification(
+                                  item.id || idx.toString(),
+                                  "🤲 সন্তানের জন্য বিদ্যালয়ের নেক দোয়া পাঠালাম"
+                                )
+                              }
+                              className="px-2.5 py-1.5 bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/40 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                            >
+                              <span>🤲 দোয়া ও শুভকামনা</span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleAcknowledgeNotification(
+                                  item.id || idx.toString(),
+                                  "🌟 শিক্ষক ও একাডেমি কর্তৃপক্ষকে আন্তরিক ধন্যবাদ"
+                                )
+                              }
+                              className="px-2.5 py-1.5 bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-500/40 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1 cursor-pointer active:scale-95"
+                            >
+                              <span>🌟 কর্তৃপক্ষকে ধন্যবাদ</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

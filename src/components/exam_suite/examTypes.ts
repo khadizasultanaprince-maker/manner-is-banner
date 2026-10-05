@@ -75,7 +75,9 @@ export interface LectureNote {
 
 export interface StudentSecurityProfile {
   studentId: string;
+  indexNumber: string; // ইউনিক ইনডেক্স নম্বর (Unique Index Number, e.g., DLM-2026-0501)
   name: string;
+  nameEnglish?: string;
   className: string;
   roll: string;
   bloodGroup: string;
@@ -83,13 +85,26 @@ export interface StudentSecurityProfile {
   guardianPhone: string;
   emergencyContact: string;
   address: string;
-  photoUrl?: string;
+  photoUrl?: string; // শিক্ষার্থীর নিজের ছবি
+  fatherName?: string; // পিতার নাম
+  fatherOccupation?: string; // পিতার পেশা
+  fatherPhone?: string; // পিতার ফোন নম্বর
+  fatherPhotoUrl?: string; // পিতার ছবি
+  motherName?: string; // মাতার নাম
+  motherOccupation?: string; // মাতার পেশা
+  motherPhone?: string; // মাতার ফোন নম্বর
+  motherPhotoUrl?: string; // মাতার ছবি
+  dateOfBirth?: string; // জন্মতারিখ
+  gender?: string; // লিঙ্গ (ছাত্র / ছাত্রী)
   cardExpiry: string;
+  rfidUid?: string; // আরএফআইডি / ডিজিটাল চিপ নম্বর
+  admissionDate?: string;
 }
 
 export interface GateLog {
   id: string;
   studentId: string;
+  indexNumber?: string;
   studentName: string;
   className: string;
   roll: string;
@@ -100,6 +115,10 @@ export interface GateLog {
   guardianPhone: string;
   notificationMessage: string;
   status: "delivered" | "sent";
+  guardianAcknowledged?: boolean; // অভিভাবক কর্তৃক প্রাপ্তি স্বীকার হয়েছে কিনা
+  guardianAcknowledgementText?: string; // অভিভাবকের দোয়া বা শুভেচ্ছা বার্তা
+  guardianAcknowledgedAt?: string; // প্রাপ্তি স্বীকারের সময়
+  voiceSpoken?: boolean; // মিষ্টি কণ্ঠে ভয়েস এনাউন্সমেন্ট সম্পন্ন হয়েছে কিনা
 }
 
 export interface AdmitCard {

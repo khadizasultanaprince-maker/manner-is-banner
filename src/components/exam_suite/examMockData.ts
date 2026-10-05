@@ -224,7 +224,9 @@ export const SAMPLE_LECTURE_NOTES: LectureNote[] = [
 export const SAMPLE_SECURITY_PROFILES: StudentSecurityProfile[] = [
   {
     studentId: "DLM-501",
+    indexNumber: "DLM-2026-0501",
     name: "আহমেদ হাসান",
+    nameEnglish: "Ahmed Hasan",
     className: "পঞ্চম শ্রেণি",
     roll: "০১",
     bloodGroup: "B+",
@@ -233,11 +235,24 @@ export const SAMPLE_SECURITY_PROFILES: StudentSecurityProfile[] = [
     emergencyContact: "01819-876543",
     address: "বাসা নং ১২, রোড ৩, মিরপুর, ঢাকা",
     cardExpiry: "৩১ ডিসেম্বর ২০২৬",
-    photoUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80"
+    photoUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80",
+    fatherName: "মোঃ রফিকুল হাসান",
+    fatherOccupation: "ব্যবসায়ী",
+    fatherPhone: "01711-234567",
+    fatherPhotoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    motherName: "মোসাম্মাৎ খাদিজা বেগম",
+    motherOccupation: "গৃহিণী ও শিক্ষাবিদ",
+    motherPhone: "01712-334455",
+    motherPhotoUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+    dateOfBirth: "১৫ জানুয়ারি ২০১৫",
+    gender: "ছাত্র",
+    rfidUid: "RF-883492"
   },
   {
     studentId: "DLM-502",
+    indexNumber: "DLM-2026-0502",
     name: "ফাতেমা জান্নাত",
+    nameEnglish: "Fatema Jannat",
     className: "পঞ্চম শ্রেণি",
     roll: "০২",
     bloodGroup: "O+",
@@ -246,11 +261,24 @@ export const SAMPLE_SECURITY_PROFILES: StudentSecurityProfile[] = [
     emergencyContact: "01720-998877",
     address: "প্লট ৪৫, সেক্টর ৭, উত্তরা, ঢাকা",
     cardExpiry: "৩১ ডিসেম্বর ২০২৬",
-    photoUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80"
+    photoUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
+    fatherName: "মোঃ নুরুল ইসলাম",
+    fatherOccupation: "ব্যাংক কর্মকর্তা",
+    fatherPhone: "01912-345678",
+    fatherPhotoUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    motherName: "তাহমিনা সুলতানা",
+    motherOccupation: "সরকারি কর্মকর্তা",
+    motherPhone: "01915-889900",
+    motherPhotoUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
+    dateOfBirth: "০৩ মে ২০১৪",
+    gender: "ছাত্রী",
+    rfidUid: "RF-991204"
   },
   {
     studentId: "DLM-505",
+    indexNumber: "DLM-2026-0505",
     name: "নুসরাত জাহান মাহিদা",
+    nameEnglish: "Nusrat Jahan Mahida",
     className: "পঞ্চম শ্রেণি",
     roll: "০৫",
     bloodGroup: "A+",
@@ -259,7 +287,18 @@ export const SAMPLE_SECURITY_PROFILES: StudentSecurityProfile[] = [
     emergencyContact: "01712-443322",
     address: "বাড়ি নং ৮, কাজীপাড়া, মিরপুর, ঢাকা",
     cardExpiry: "৩১ ডিসেম্বর ২০২৬",
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
+    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    fatherName: "মোঃ কামরুল হাসান",
+    fatherOccupation: "প্রকৌশলী",
+    fatherPhone: "01815-667788",
+    fatherPhotoUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+    motherName: "ফারহানা নাসরীন",
+    motherOccupation: "শিক্ষিকা",
+    motherPhone: "01817-554433",
+    motherPhotoUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+    dateOfBirth: "২২ নভেম্বর ২০১৪",
+    gender: "ছাত্রী",
+    rfidUid: "RF-772318"
   }
 ];
 

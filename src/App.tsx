@@ -2399,6 +2399,27 @@ export default function App() {
       </div>
 
       {/* UPPER CONTROLLER HEADER & PRINT ALERTS - HIDDEN DURING PRINTING */}
+      {/* QUICK PROMINENT PROMPT TO DIGITAL SECURITY & EXAM SUITE */}
+      {activeTab !== "exam_security" && (
+        <div className="no-print bg-gradient-to-r from-indigo-950 via-slate-900 to-emerald-950 text-white px-4 py-2.5 text-xs flex flex-wrap items-center justify-between gap-2 shadow-inner border-b border-indigo-500/40">
+          <div className="flex items-center gap-2.5">
+            <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-full uppercase animate-pulse">
+              নতুন ফিচার
+            </span>
+            <span className="font-bold text-slate-100">
+              ডিজিটাল নিরাপত্তা ব্যবস্থা (গেট স্ক্যানার, কার্ড রিডার ও অভিভাবক স্বয়ংক্রিয় এসএমএস/নোটিফিকেশন কনফিগ) যুক্ত হয়েছে।
+            </span>
+          </div>
+          <button
+            onClick={() => setActiveTab("exam_security")}
+            className="px-3.5 py-1 bg-gradient-to-r from-amber-400 to-amber-300 hover:brightness-110 text-slate-950 font-black text-xs rounded-lg transition shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 ring-1 ring-amber-300"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-slate-950" />
+            <span>সরাসরি ডিজিটাল নিরাপত্তা ও পরীক্ষা কন্ট্রোলারে যান →</span>
+          </button>
+        </div>
+      )}
+
       <div className="no-print w-full bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           
