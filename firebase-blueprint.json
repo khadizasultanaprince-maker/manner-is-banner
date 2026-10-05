@@ -54,6 +54,49 @@
         "updatedAt": "timestamp"
       },
       "indexes": []
+    },
+    "student_progress": {
+      "schema": {
+        "id": "string",
+        "studentName": "string",
+        "studentClass": "string",
+        "studentRoll": "string",
+        "learningStyle": "string",
+        "behavioralPattern": "string",
+        "confidenceLevel": "string",
+        "keyBarrier": "string",
+        "hiddenTalent": "string",
+        "customStrategy": "string",
+        "competencies": "array",
+        "updatedAt": "timestamp"
+      },
+      "indexes": []
+    },
+    "student_accounts": {
+      "schema": {
+        "studentId": "string",
+        "name": "string",
+        "class": "string",
+        "roll": "string",
+        "photoUrl": "string",
+        "dreamGoal": "string",
+        "createdAt": "string",
+        "password": "string",
+        "tasks": "array",
+        "updatedAt": "string"
+      },
+      "indexes": []
+    },
+    "students": {
+      "schema": {
+        "id": "string",
+        "name": "string",
+        "class": "string",
+        "roll": "string",
+        "active": "boolean",
+        "createdAt": "timestamp"
+      },
+      "indexes": []
     }
   }
 }

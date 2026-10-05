@@ -3,7 +3,7 @@ export interface Student {
   name: string;
 }
 
-export const studentsByClass: Record<string, Student[]> = {
+export const DEFAULT_STUDENTS_BY_CLASS: Record<string, Student[]> = {
   "প্লে": [
     { roll: "১", name: "মোঃ মাজিদ" },
     { roll: "২", name: "সালমান" },
@@ -215,6 +215,79 @@ export const studentsByClass: Record<string, Student[]> = {
   ]
 };
 
+// Initial load helper
+function getInitialStudents(): Record<string, Student[]> {
+  try {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("custom_school_students");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+          return parsed;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load custom students from storage:", err);
+  }
+  return { ...DEFAULT_STUDENTS_BY_CLASS };
+}
+
+export const studentsByClass: Record<string, Student[]> = getInitialStudents();
+
 // Alias to ensure both spellings (নার্সারি and নার্সারী) resolve seamlessly
-studentsByClass["নার্সারী"] = studentsByClass["নার্সারি"];
+if (studentsByClass["নার্সারি"] && !studentsByClass["নার্সারী"]) {
+  studentsByClass["নার্সারী"] = studentsByClass["নার্সারি"];
+}
+
+export function hasCustomStudents(): boolean {
+  try {
+    if (typeof window !== "undefined") {
+      return !!localStorage.getItem("custom_school_students");
+    }
+  } catch {
+    // Ignore
+  }
+  return false;
+}
+
+export function saveCustomStudents(newData: Record<string, Student[]>): void {
+  try {
+    // Clear current keys
+    for (const key of Object.keys(studentsByClass)) {
+      delete studentsByClass[key];
+    }
+    // Re-assign new keys
+    Object.assign(studentsByClass, newData);
+    if (studentsByClass["নার্সারি"] && !studentsByClass["নার্সারী"]) {
+      studentsByClass["নার্সারী"] = studentsByClass["নার্সারি"];
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("custom_school_students", JSON.stringify(newData));
+      window.dispatchEvent(new CustomEvent("school_students_updated", { detail: newData }));
+    }
+  } catch (err) {
+    console.error("Error saving custom students to localStorage:", err);
+  }
+}
+
+export function resetToDefaultStudents(): void {
+  try {
+    for (const key of Object.keys(studentsByClass)) {
+      delete studentsByClass[key];
+    }
+    Object.assign(studentsByClass, DEFAULT_STUDENTS_BY_CLASS);
+    if (studentsByClass["নার্সারি"] && !studentsByClass["নার্সারী"]) {
+      studentsByClass["নার্সারী"] = studentsByClass["নার্সারি"];
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("custom_school_students");
+      window.dispatchEvent(new CustomEvent("school_students_updated", { detail: DEFAULT_STUDENTS_BY_CLASS }));
+    }
+  } catch (err) {
+    console.error("Error resetting students to default:", err);
+  }
+}
 

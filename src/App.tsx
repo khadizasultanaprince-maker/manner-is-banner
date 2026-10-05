@@ -47,7 +47,8 @@ import {
   LifeBuoy,
   Camera,
   Upload,
-  Home
+  Home,
+  FileSpreadsheet
 } from "lucide-react";
 import { db } from "./firebase";
 import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
@@ -57,6 +58,8 @@ import SupportTroubleshooter from "./components/SupportTroubleshooter";
 import { PerformanceAnalyzerModal } from "./components/PerformanceAnalyzerModal";
 import { AnnualHolidaysModal } from "./components/AnnualHolidaysModal";
 import { HomeVisitManager } from "./components/HomeVisitManager";
+import { MonthlyHabitReportCard } from "./components/MonthlyHabitReportCard";
+import { ExcelDataImporterModal } from "./components/ExcelDataImporterModal";
 import { HomeVisitRecord, INITIAL_SAMPLE_VISITS } from "./homeVisitData";
 import { 
   SchoolHoliday, 
@@ -72,6 +75,7 @@ import {
   parentPrompt
 } from "./slidesData";
 import { studentsByClass, Student } from "./studentsData";
+import { getInitialStudentProgress } from "./studentProgressRegistry";
 import { 
   collection, 
   onSnapshot, 
@@ -414,8 +418,8 @@ export default function App() {
     localStorage.removeItem("app_global_user");
   };
 
-  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard vs. Support Troubleshooter vs. Home Visits
-  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard" | "troubleshooter" | "home_visits">("routine");
+  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard vs. Support Troubleshooter vs. Home Visits vs. Habit Report Card
+  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "report_card" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard" | "troubleshooter" | "home_visits">("routine");
 
   // Supabase & Cloud Integrations states
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("supabase_url") || "");
@@ -669,6 +673,18 @@ export default function App() {
     setAutoHighlightHolidays(enabled);
     localStorage.setItem("auto_highlight_holidays", enabled ? "true" : "false");
   };
+
+  // Excel 10-Class Data Importer State
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [, setStudentsVersion] = useState(0);
+
+  useEffect(() => {
+    const handleStudentsUpdated = () => {
+      setStudentsVersion(v => v + 1);
+    };
+    window.addEventListener("school_students_updated", handleStudentsUpdated);
+    return () => window.removeEventListener("school_students_updated", handleStudentsUpdated);
+  }, []);
 
   const handleSaveSchoolHolidays = async (updated: SchoolHoliday[]) => {
     setSchoolHolidays(updated);
@@ -1624,70 +1640,136 @@ export default function App() {
     const formattedClass = cls.trim();
     const formattedRoll = roll.trim();
     const formattedName = name.trim();
-    const docId = `${formattedClass}_রোল-${formattedRoll}_${formattedName}`.replace(/[\s./#$[\]]/g, "_");
-    
+    const cleanCls = getCanonicalClassName(cls);
+
+    // Candidates for document lookup in Firebase Firestore
+    const candidateDocIds = [
+      `${formattedClass}_রোল-${formattedRoll}_${formattedName}`.replace(/[\s./#$[\]]/g, "_"),
+      `${cleanCls} শ্রেণি_রোল-${toBnNum(formattedRoll)}_${formattedName}`.replace(/[\s./#$[\]]/g, "_"),
+      `${cleanCls}_রোল-${toBnNum(formattedRoll)}_${formattedName}`.replace(/[\s./#$[\]]/g, "_"),
+      `${cleanCls} শ্রেণি_রোল-${fromBnNum(formattedRoll)}_${formattedName}`.replace(/[\s./#$[\]]/g, "_"),
+      `${cleanCls}_রোল-${fromBnNum(formattedRoll)}_${formattedName}`.replace(/[\s./#$[\]]/g, "_")
+    ];
+
     try {
-      const docRef = doc(db, "student_progress", docId);
-      const snapshot = await getDoc(docRef);
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        if (data.learningStyle !== undefined) setLearningStyle(data.learningStyle);
-        if (data.behavioralPattern !== undefined) setBehavioralPattern(data.behavioralPattern);
-        if (data.confidenceLevel !== undefined) setConfidenceLevel(data.confidenceLevel);
-        if (data.keyBarrier !== undefined) setKeyBarrier(data.keyBarrier);
-        if (data.hiddenTalent !== undefined) setHiddenTalent(data.hiddenTalent);
-        if (data.customStrategy !== undefined) setCustomStrategy(data.customStrategy);
-        if (data.competencies !== undefined) setCompetencies(data.competencies);
+      let foundData: any = null;
+      for (const cId of candidateDocIds) {
+        try {
+          const docRef = doc(db, "student_progress", cId);
+          const snapshot = await getDoc(docRef);
+          if (snapshot.exists()) {
+            foundData = snapshot.data();
+            break;
+          }
+        } catch {
+          // Continue to next candidate
+        }
+      }
+
+      if (foundData) {
+        if (foundData.learningStyle !== undefined) setLearningStyle(foundData.learningStyle);
+        if (foundData.behavioralPattern !== undefined) setBehavioralPattern(foundData.behavioralPattern);
+        if (foundData.confidenceLevel !== undefined) setConfidenceLevel(foundData.confidenceLevel);
+        if (foundData.keyBarrier !== undefined) setKeyBarrier(foundData.keyBarrier);
+        if (foundData.hiddenTalent !== undefined) setHiddenTalent(foundData.hiddenTalent);
+        if (foundData.customStrategy !== undefined) setCustomStrategy(foundData.customStrategy);
+        if (foundData.competencies !== undefined) setCompetencies(foundData.competencies);
         setProgressSyncMsg("সাফল্যের সাথে এই শিক্ষার্থীর প্রগতি ও মনস্তাত্ত্বিক ডেটা লোড করা হয়েছে।");
       } else {
-        // Clear or set to default if not found
+        // Check initialized registry (e.g. Nursery students record)
+        const initialRegistryData = getInitialStudentProgress(cls, roll, name);
+        if (initialRegistryData) {
+          setLearningStyle(initialRegistryData.learningStyle);
+          setBehavioralPattern(initialRegistryData.behavioralPattern);
+          setConfidenceLevel(initialRegistryData.confidenceLevel);
+          setKeyBarrier(initialRegistryData.keyBarrier);
+          setHiddenTalent(initialRegistryData.hiddenTalent);
+          setCustomStrategy(initialRegistryData.customStrategy);
+          setCompetencies(initialRegistryData.competencies);
+          setProgressSyncMsg("শিক্ষার্থীর প্রাথমিক প্রগতি ও মূল্যায়ন রেকর্ড সক্রিয় রয়েছে।");
+
+          // Save to Firestore in background for persistence
+          const targetDocId = `${formattedClass}_রোল-${formattedRoll}_${formattedName}`.replace(/[\s./#$[\]]/g, "_");
+          try {
+            setDoc(doc(db, "student_progress", targetDocId), {
+              id: targetDocId,
+              studentName: formattedName,
+              studentClass: formattedClass,
+              studentRoll: formattedRoll,
+              learningStyle: initialRegistryData.learningStyle,
+              behavioralPattern: initialRegistryData.behavioralPattern,
+              confidenceLevel: initialRegistryData.confidenceLevel,
+              keyBarrier: initialRegistryData.keyBarrier,
+              hiddenTalent: initialRegistryData.hiddenTalent,
+              customStrategy: initialRegistryData.customStrategy,
+              competencies: initialRegistryData.competencies,
+              updatedAt: serverTimestamp()
+            }, { merge: true });
+          } catch (e) {
+            console.warn("Background firestore sync warning:", e);
+          }
+        } else {
+          // Clear or set to default if not found
+          setLearningStyle("দৃশ্যমান (Visual) - দেখে দেখে");
+          setBehavioralPattern("চুপচাপ ও লাজুক");
+          setConfidenceLevel("মাঝারি (Mid)");
+          setKeyBarrier("ভুল করার ভয়");
+          setHiddenTalent("ছবি আঁকা");
+          setCustomStrategy("");
+          setCompetencies([
+            {
+              id: "1",
+              skillArea: "বাংলা বানান",
+              currentStatus: "৫/১০ ভুল করে, যুক্তবর্ণে সমস্যা",
+              targetGoal: "নির্ভুল বানান ও পড়া",
+              supportType: "ওয়ান-টু-ওয়ান কাউন্সেলিং",
+              progress: "yellow",
+              reviewDate: "২০/১০/২০২৬"
+            },
+            {
+              id: "2",
+              skillArea: "গণিত (ভাগ)",
+              currentStatus: "পদ্ধতি জানে না, নামতা দুর্বল",
+              targetGoal: "১-১০ ঘরের নামতা ও ভাগ করা",
+              supportType: "পিয়ার লার্নিং (বন্ধু শিক্ষা)",
+              progress: "red",
+              reviewDate: "২৫/১০/২০২৬"
+            },
+            {
+              id: "3",
+              skillArea: "ইংরেজি রিডিং",
+              currentStatus: "শব্দ ভেঙে পড়ে, সাবলীল নয়",
+              targetGoal: "সাবলীল শব্দ উচ্চারণ ও রিডিং",
+              supportType: "অডিও ড্রিলিং ও রিডিং অনুশীলন",
+              progress: "green",
+              reviewDate: "১৮/১০/২০২৬"
+            }
+          ]);
+          setProgressSyncMsg("এই শিক্ষার্থীর কোনো সংরক্ষিত ক্লাউড প্রগতি রেকর্ড পাওয়া যায়নি। নতুন রেকর্ড শুরু হয়েছে।");
+        }
+      }
+    } catch (err: any) {
+      console.warn("Could not load cloud progress (offline or pending sync):", err?.message || err);
+      // Check local initial registry even in offline mode
+      const initialRegistryData = getInitialStudentProgress(cls, roll, name);
+      if (initialRegistryData) {
+        setLearningStyle(initialRegistryData.learningStyle);
+        setBehavioralPattern(initialRegistryData.behavioralPattern);
+        setConfidenceLevel(initialRegistryData.confidenceLevel);
+        setKeyBarrier(initialRegistryData.keyBarrier);
+        setHiddenTalent(initialRegistryData.hiddenTalent);
+        setCustomStrategy(initialRegistryData.customStrategy);
+        setCompetencies(initialRegistryData.competencies);
+        setProgressSyncMsg("অফলাইন মোড: প্রগতি ডেটা সক্রিয় রয়েছে।");
+      } else {
         setLearningStyle("দৃশ্যমান (Visual) - দেখে দেখে");
         setBehavioralPattern("চুপচাপ ও লাজুক");
         setConfidenceLevel("মাঝারি (Mid)");
         setKeyBarrier("ভুল করার ভয়");
         setHiddenTalent("ছবি আঁকা");
         setCustomStrategy("");
-        setCompetencies([
-          {
-            id: "1",
-            skillArea: "বাংলা বানান",
-            currentStatus: "৫/১০ ভুল করে, যুক্তবর্ণে সমস্যা",
-            targetGoal: "নির্ভুল বানান ও পড়া",
-            supportType: "ওয়ান-টু-ওয়ান কাউন্সেলিং",
-            progress: "yellow",
-            reviewDate: "২০/১০/২০২৬"
-          },
-          {
-            id: "2",
-            skillArea: "গণিত (ভাগ)",
-            currentStatus: "পদ্ধতি জানে না, নামতা দুর্বল",
-            targetGoal: "১-১০ ঘরের নামতা ও ভাগ করা",
-            supportType: "পিয়ার লার্নিং (বন্ধু শিক্ষা)",
-            progress: "red",
-            reviewDate: "২৫/১০/২০২৬"
-          },
-          {
-            id: "3",
-            skillArea: "ইংরেজি রিডিং",
-            currentStatus: "শব্দ ভেঙে পড়ে, সাবলীল নয়",
-            targetGoal: "সাবলীল শব্দ উচ্চারণ ও রিডিং",
-            supportType: "অডিও ড্রিলিং ও রিডিং অনুশীলন",
-            progress: "green",
-            reviewDate: "১৮/১০/২০২৬"
-          }
-        ]);
-        setProgressSyncMsg("এই শিক্ষার্থীর কোনো সংরক্ষিত ক্লাউড প্রগতি রেকর্ড পাওয়া যায়নি। নতুন রেকর্ড শুরু হয়েছে।");
+        setProgressSyncMsg("অফলাইন মোড: লোকাল রেকর্ডে কাজ চালু আছে। ক্লাউড কানেকশন সক্রিয় হলে অটো সিঙ্ক হবে।");
       }
-    } catch (err: any) {
-      console.warn("Could not load cloud progress (offline or pending sync):", err?.message || err);
-      // Set defaults gracefully so user can continue without blocking UI
-      setLearningStyle("দৃশ্যমান (Visual) - দেখে দেখে");
-      setBehavioralPattern("চুপচাপ ও লাজুক");
-      setConfidenceLevel("মাঝারি (Mid)");
-      setKeyBarrier("ভুল করার ভয়");
-      setHiddenTalent("ছবি আঁকা");
-      setCustomStrategy("");
-      setProgressSyncMsg("অফলাইন মোড: লোকাল রেকর্ডে কাজ চালু আছে। ক্লাউড কানেকশন সক্রিয় হলে অটো সিঙ্ক হবে।");
     } finally {
       setIsLoadingProgress(false);
     }
@@ -2365,6 +2447,8 @@ export default function App() {
               <span>
                 {activeTab === "routine" 
                   ? "A4 রুটিন প্রিন্ট / PDF ডাউনলোড" 
+                  : activeTab === "report_card"
+                  ? "A4 অভ্যাস রিপোর্ট কার্ড প্রিন্ট"
                   : activeTab === "certificate" 
                   ? "A4 এওয়ার্ড সার্টিফিকেট প্রিন্ট" 
                   : activeTab === "summary"
@@ -2510,6 +2594,16 @@ export default function App() {
                     );
                   })}
                 </div>
+
+                {/* 10-Class Excel Import Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsExcelModalOpen(true)}
+                  className="w-full mt-2.5 py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs group"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition" />
+                  <span>১০টি শ্রেণির এক্সেল ফাইল আপলোড ও প্রতিস্থাপন</span>
+                </button>
               </div>
 
               {/* STEP 2: ROLL NUMBER & STUDENT AUTO-FIND */}
@@ -3334,6 +3428,19 @@ export default function App() {
             </span>
           </button>
 
+          {/* EXCEL 10-CLASS DATA IMPORTER BUTTON */}
+          <button
+            onClick={() => setIsExcelModalOpen(true)}
+            className="flex-1 min-w-[160px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white shadow-md border border-emerald-300 ring-2 ring-emerald-400 hover:brightness-110"
+            title="১০টি ক্লাসের এক্সেল ফাইল আপলোড ও তথ্য পুনর্গঠন"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-amber-300" />
+            <span>📊 এক্সেল ১০-শ্রেণি প্রতিস্থাপন</span>
+            <span className="text-[9px] bg-amber-300 text-slate-950 font-black px-1.5 py-0.2 rounded shadow-2xs font-mono">
+              ইম্পোর্ট
+            </span>
+          </button>
+
           {/* ROUTINE GRID TAB - VISIBLE FOR ALL */}
           <button
             onClick={() => setActiveTab("routine")}
@@ -3360,6 +3467,22 @@ export default function App() {
             <span>🏠 আচমকা বাড়ি পরিদর্শন</span>
             <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded shadow-2xs font-mono">
               {toBnNum(homeVisits.length)}টি
+            </span>
+          </button>
+
+          {/* MONTHLY HABIT REPORT CARD TAB - VISIBLE FOR ALL */}
+          <button
+            onClick={() => setActiveTab("report_card")}
+            className={`flex-1 min-w-[155px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "report_card"
+                ? "bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-900 text-white shadow-md border border-indigo-300 ring-2 ring-indigo-400"
+                : "bg-indigo-50/80 text-indigo-950 hover:bg-indigo-100 border border-indigo-200"
+            }`}
+          >
+            <FileText className="w-4 h-4 text-indigo-600" />
+            <span>📋 অভ্যাস রিপোর্ট কার্ড (A4)</span>
+            <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded shadow-2xs font-mono">
+              {toBnNum(earnedPercentage)}%
             </span>
           </button>
 
@@ -4162,6 +4285,8 @@ export default function App() {
               <span>
                 {activeTab === "routine" 
                   ? "নিচের রুটিনটি ১ পৃষ্ঠায় নিখুঁতভাবে প্রিন্ট করার জন্য ১০০% পরিমিত করা হয়েছে।" 
+                  : activeTab === "report_card"
+                  ? "নিচের অভ্যাস রিপোর্ট কার্ডটি A4 সাইজ কাগজে গড় শতকরা হারসহ দৃষ্টিনন্দনভাবে প্রিন্ট দেওয়ার জন্য প্রস্তুত।"
                   : activeTab === "certificate"
                   ? "নিচের প্রশংসাপত্রটি A4 সাইজ কাগজে মেডেলসহ রঙিন প্রিন্ট দেওয়ার জন্য প্রস্তুত।"
                   : activeTab === "summary"
@@ -4200,7 +4325,7 @@ export default function App() {
                 style={{ 
                   fontFamily: '"Hind Siliguri", "Noto Sans Bengali", sans-serif',
                   minHeight: '28.2cm',
-                  ['--dynamic-row-height' as any]: `${(630 / daysCount).toFixed(1)}px`
+                  ['--dynamic-row-height' as any]: `${Math.min(18, 520 / daysCount).toFixed(1)}px`
                 }}
                 id="routine-a4-sheet"
               >
@@ -4210,7 +4335,7 @@ export default function App() {
                 {/* Top border decor for "Professional Polish" */}
                   {/* Dynamic decorative top bar to make the printed sheet look spectacular and friendly */}
                   {themeMode === "professional-polish" && (
-                    <div className="w-full h-2.5 bg-gradient-to-r from-sky-400 via-emerald-400 via-indigo-500 via-purple-400 to-amber-400 rounded-t-lg -mt-5 -mx-5 mb-4 sm:-mt-8 sm:-mx-8 print:-mt-5 print:-mx-5 print:mb-3" />
+                    <div className="w-full h-2.5 bg-gradient-to-r from-sky-400 via-emerald-400 via-indigo-500 via-purple-400 to-amber-400 rounded-t-lg -mt-5 -mx-5 mb-4 sm:-mt-8 sm:-mx-8 print:hidden" />
                   )}
 
                   {themeMode === "professional-polish" && (
@@ -4218,27 +4343,27 @@ export default function App() {
                   )}
 
                 {/* Printable Header Section */}
-                <div className={`border-b-2 ${themeMode === "professional-polish" ? "border-indigo-100 pb-3" : "border-black pb-4"} mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-end ${sizes.gapSize}`}>
+                <div className={`border-b-2 ${themeMode === "professional-polish" ? "border-indigo-100 pb-3 print:pb-1" : "border-black pb-4 print:pb-1"} mb-3 print:mb-1.5 flex flex-col sm:flex-row justify-between items-start sm:items-end ${sizes.gapSize}`}>
                   <div>
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <h1 className={`text-xl sm:text-2xl font-black border-l-4 pl-3 tracking-tight ${themeMode === "professional-polish" ? "text-indigo-950 border-indigo-500" : "text-black border-black"}`}>
+                    <div className="flex flex-wrap items-center gap-2.5 print:gap-1.5">
+                      <h1 className={`text-xl sm:text-2xl print:text-[15px] font-black border-l-4 print:border-l-2 pl-3 print:pl-1.5 tracking-tight ${themeMode === "professional-polish" ? "text-indigo-950 border-indigo-500" : "text-black border-black"}`}>
                         ডি-লিকন মডেল একাডেমীর  ছাত্র-ছাত্রীদের শিষ্টাচার, আমলনামা ও পড়ার রুটিন
                       </h1>
-                      <span className={`inline-flex items-center gap-1.5 border-2 rounded-full px-3 py-1 text-[11px] sm:text-xs font-serif italic font-black shadow-xs select-none tracking-wider uppercase rotate-[-1.5deg] hover:rotate-0 transition duration-150 ${themeMode === "professional-polish" ? "bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-955 border-amber-400" : "bg-yellow-100/90 text-yellow-950 border-yellow-500"}`}>
+                      <span className={`inline-flex items-center gap-1.5 border-2 rounded-full px-3 py-1 print:px-2 print:py-0.2 text-[11px] sm:text-xs print:text-[9px] font-serif italic font-black shadow-xs select-none tracking-wider uppercase rotate-[-1.5deg] hover:rotate-0 transition duration-150 ${themeMode === "professional-polish" ? "bg-gradient-to-r from-amber-400 to-yellow-300 text-amber-955 border-amber-400" : "bg-yellow-100/90 text-yellow-950 border-yellow-500"}`}>
                         ✨ "Manner is Banner"
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[9px] uppercase tracking-widest text-slate-500 font-extrabold font-mono">
+                    <div className="flex items-center gap-2 mt-1.5 print:mt-0.5">
+                      <span className="text-[9px] print:text-[8px] uppercase tracking-widest text-slate-500 font-extrabold font-mono">
                         Student Morals & Daily Study Routine Grid
                       </span>
-                      <span className={`text-[9px] inline-block font-extrabold border px-2 py-0.5 rounded-full ${themeMode === "professional-polish" ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-neutral-100 border-black"}`}>
+                      <span className={`text-[9px] print:text-[8px] inline-block font-extrabold border px-2 py-0.5 print:px-1.5 print:py-0.2 rounded-full ${themeMode === "professional-polish" ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-neutral-100 border-black"}`}>
                         সংশোধন ও শুদ্ধাচার মিশন
                       </span>
                     </div>
                   </div>
 
-                  <div className={`grid grid-cols-2 gap-x-3 gap-y-1 text-xs font-semibold sm:w-auto w-full ${themeMode === "professional-polish" ? "bg-slate-50/50 p-2 rounded-lg border border-slate-100/80" : ""}`}>
+                  <div className={`grid grid-cols-2 gap-x-3 gap-y-1 print:gap-x-2 print:gap-y-0.5 print:p-1 text-xs print:text-[10px] font-semibold sm:w-auto w-full ${themeMode === "professional-polish" ? "bg-slate-50/50 p-2 rounded-lg border border-slate-100/80" : ""}`}>
                     <div className="flex items-center gap-1.5">
                       <span className={`font-bold whitespace-nowrap ${themeMode === "professional-polish" ? "text-slate-600 text-[11px]" : "text-gray-800"}`}>নাম:</span>
                       <div className={`flex-1 min-w-[110px] pb-0.5 px-1.5 font-bold text-black italic ${themeMode === "professional-polish" ? "border-b border-sky-400 bg-sky-50/50 rounded-t" : "border-b border-gray-400 bg-gray-50/50"}`}>
@@ -4267,7 +4392,7 @@ export default function App() {
                 </div>
 
                 {/* Print Version Progress Scoreboard block */}
-                <div className={`flex justify-between items-center mb-3 px-3.5 py-1.5 border text-[11px] font-semibold rounded-xl ${
+                <div className={`flex justify-between items-center mb-3 print:mb-1 px-3.5 py-1.5 print:px-2 print:py-0.5 border text-[11px] print:text-[9px] font-semibold rounded-xl ${
                   themeMode === "professional-polish"
                     ? "bg-gradient-to-r from-indigo-50/80 via-white to-amber-50/50 border-indigo-100/70 shadow-xs"
                     : "bg-neutral-50 border-neutral-300 rounded"
@@ -4275,14 +4400,14 @@ export default function App() {
                   <div className="flex items-center gap-4">
                     <div>
                       <span className={`font-black uppercase text-[8.5px] block ${themeMode === "professional-polish" ? "text-slate-500" : "text-gray-500"}`}>🎯 সর্বমোট রুটিন লক্ষ্য</span>
-                      <span className="font-extrabold text-black text-xs mt-0.5 block">
+                      <span className="font-extrabold text-black text-xs print:text-[10px] mt-0.5 block">
                         {toBnNum(daysCount)} দিনে মোট <span className="text-indigo-900 font-black">{toBnNum(totalTicksExpected)}</span> টি সৎ অভ্যাস লক্ষ্য
                       </span>
                     </div>
-                    <div className={`w-[1.5px] h-7 ${themeMode === "professional-polish" ? "bg-indigo-100" : "bg-neutral-300"}`} />
+                    <div className={`w-[1.5px] h-7 print:h-5 ${themeMode === "professional-polish" ? "bg-indigo-100" : "bg-neutral-300"}`} />
                     <div>
                       <span className={`font-black uppercase text-[8.5px] block ${themeMode === "professional-polish" ? "text-slate-500" : "text-gray-500"}`}>🏆 ডিজিটাল প্রগ্রেস অর্জন</span>
-                      <span className={`font-black text-xs mt-0.5 block font-mono px-2 py-0.5 rounded-full border ${
+                      <span className={`font-black text-xs print:text-[10px] mt-0.5 block font-mono px-2 py-0.5 rounded-full border ${
                         themeMode === "professional-polish" 
                           ? "bg-emerald-500 text-white border-emerald-600 shadow-xs shadow-emerald-100" 
                           : "bg-indigo-50 text-black border-indigo-200"
@@ -4293,12 +4418,12 @@ export default function App() {
                   </div>
                   <div className="text-right">
                     <span className={`font-black uppercase text-[8.5px] block ${themeMode === "professional-polish" ? "text-indigo-500" : "text-gray-400"}`}>🔍 পর্যালোচনা ও তদারকি</span>
-                    <p className="text-slate-950 text-[10px] font-black mt-0.5">অভিভাবক ও বিদ্যালয়ের নিয়মিত মূল্যায়ন</p>
+                    <p className="text-slate-950 text-[10px] print:text-[8.5px] font-black mt-0.5">অভিভাবক ও বিদ্যালয়ের নিয়মিত মূল্যায়ন</p>
                   </div>
                 </div>
 
                 {/* Parent Print Alarm Notification Banner */}
-                <div className="mb-2 p-2 px-3 bg-amber-50/90 border border-amber-300 rounded-lg flex items-center justify-between text-[10.5px] text-amber-950 font-bold print:border-black print:bg-white print:p-1.5 print:my-1.5 shadow-2xs">
+                <div className="mb-2 print:mb-1 p-2 px-3 print:p-1 print:px-2 bg-amber-50/90 border border-amber-300 rounded-lg flex items-center justify-between text-[10.5px] print:text-[9px] text-amber-950 font-bold print:border-black print:bg-white shadow-2xs">
                   <div className="flex items-center gap-2">
                     <div className="p-1 bg-amber-200 text-amber-950 rounded-full print:bg-transparent print:p-0">
                       <BellRing className="w-3.5 h-3.5 text-amber-800 print:text-black animate-pulse print:animate-none" />
@@ -4307,7 +4432,7 @@ export default function App() {
                       <strong>অভিভাবক নির্দেশিকা 🔔:</strong> প্রিন্টকৃত রুটিন অনুযায়ী সন্তানকে অবশ্যই <span className="bg-amber-200/80 px-1 py-0.2 rounded font-black text-amber-950 print:bg-transparent print:border-b print:border-black">সকালের পড়া</span> ও <span className="bg-amber-200/80 px-1 py-0.2 rounded font-black text-amber-950 print:bg-transparent print:border-b print:border-black">সন্ধ্যার পড়া</span> এর নির্দিষ্ট সময়সূচীতেই পড়াশোনায় বসতে সহযোগিতা করুন।
                     </span>
                   </div>
-                  <div className="hidden sm:flex items-center gap-1 text-[9.5px] bg-amber-200/90 px-2 py-0.5 rounded-full font-black text-amber-950 shrink-0 print:flex print:bg-transparent print:border print:border-black print:text-black">
+                  <div className="hidden sm:flex items-center gap-1 text-[9.5px] print:text-[8.5px] bg-amber-200/90 px-2 py-0.5 rounded-full font-black text-amber-950 shrink-0 print:flex print:bg-transparent print:border print:border-black print:text-black">
                     <AlarmClock className="w-3.5 h-3.5 text-amber-900 print:text-black" />
                     <span>⏰ সময়সীমা সুনির্দিষ্ট</span>
                   </div>
@@ -4317,7 +4442,7 @@ export default function App() {
                 <div className="w-full">
                   <table className="w-full border-collapse border border-black text-center">
                     <thead>
-                      <tr className="bg-neutral-100 h-9 text-[10px] font-extrabold text-black">
+                      <tr className="bg-neutral-100 h-9 print:h-6 text-[10px] print:text-[8.5px] font-extrabold text-black">
                         {[
                           { id: 0, width: "w-[8%]", polishBg: "bg-slate-100 text-slate-950 text-[10.5px] border-slate-400", content: "তারিখ ও বার" },
                           { id: 1, width: "w-[15%]", polishBg: "bg-emerald-50 text-emerald-950 text-[10.5px] border-slate-400", content: col2Header },
@@ -4892,11 +5017,11 @@ export default function App() {
                 </div>
 
                 {/* Print bottom footer decor */}
-                <div className="mt-16 sm:mt-24 print:mt-28 flex justify-between items-end border-t border-dashed border-gray-400 pt-5 font-semibold text-[11px] leading-tight select-none">
+                <div className="mt-16 sm:mt-24 print:mt-1.5 flex justify-between items-end border-t border-dashed border-gray-400 pt-5 print:pt-1 font-semibold text-[11px] print:text-[9.5px] leading-tight select-none">
                   <div className="flex flex-col gap-1 text-left">
                     <span className="font-extrabold text-black">তদারককারী / অভিভাবক মন্তব্য ও স্বাক্ষর:</span>
                     <span className="text-gray-400 italic">"নিয়মিত ডায়েরি লিখন ও নৈতিক মূল্যবোধ চর্চায় শিক্ষার্থীর একাগ্রতা প্রশংসনীয়।"</span>
-                    <div className="border-b border-gray-300 w-[240px] mt-16" />
+                    <div className="border-b border-gray-300 w-[240px] print:w-[170px] mt-16 print:mt-3" />
                   </div>
                   
                   {principalApproved && (
@@ -5112,162 +5237,27 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 3: STATISTICS & GRAPHS */}
-          {activeTab === "summary" && (
-            <div className="w-full max-w-[21cm] bg-white p-5 md:p-8 rounded-xl border border-gray-250/70 shadow-sm print:shadow-none font-sans flex flex-col justify-between" id="statistics-a4-sheet" style={{ minHeight: '28.0cm' }}>
-              <div>
-                <div className="border-b-2 border-slate-900 pb-3 mb-5 flex justify-between items-end">
-                  <div>
-                    <h2 className="text-lg font-black text-slate-950 flex items-center gap-2">
-                      <BarChart2 className="w-5 h-5 text-indigo-600" />
-                      <span>মাসিক প্রগতি ও শুদ্ধাচার বিশ্লেষণ সামারি সিট</span>
-                    </h2>
-                    <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider font-mono mt-0.5">Student Habits Progress Report & Statistical Summary</p>
-                  </div>
-                  <div className="text-right text-[11px] font-semibold text-slate-700">
-                    <span className="font-bold text-slate-900 block">{studentName} ({studentClass})</span>
-                    <span>রোল: {toBnNum(studentRoll)} | {selectedMonth}</span>
-                  </div>
-                </div>
-
-                {/* Section 1: Top Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
-                  <div className="bg-slate-50/70 border border-slate-200/80 p-3 rounded-lg text-center shadow-xs">
-                    <span className="text-[9.5px] text-slate-500 uppercase tracking-widest font-extrabold block">মোট সম্ভাব্য অভ্যাস</span>
-                    <span className="text-2xl font-black text-indigo-950 font-mono mt-1 block">{toBnNum(maxPossiblePoints)}</span>
-                    <span className="text-[10px] text-slate-400 font-medium block mt-0.5">১০০% অর্জনের লক্ষ্যমাত্রা</span>
-                  </div>
-                  <div className="bg-emerald-50/40 border border-emerald-200/60 p-3 rounded-lg text-center shadow-xs">
-                    <span className="text-[9.5px] text-emerald-700 uppercase tracking-widest font-extrabold block">মোট অর্জিত অভ্যাস</span>
-                    <span className="text-2xl font-black text-emerald-800 font-mono mt-1 block">{toBnNum(totalEarnedPoints)}</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold block mt-0.5">সফলভাবে টিক সম্পন্ন</span>
-                  </div>
-                  <div className="bg-indigo-50/50 border border-indigo-200/50 p-3 rounded-lg text-center shadow-xs">
-                    <span className="text-[9.5px] text-indigo-700 uppercase tracking-widest font-extrabold block">সাফল্য ও অগ্রগতি হার</span>
-                    <span className="text-2xl font-black text-indigo-900 font-mono mt-1 block">{toBnNum(earnedPercentage)}%</span>
-                    <span className="text-[10px] text-indigo-500 font-bold block mt-0.5">সামগ্রিক সম্পাদন স্কোর</span>
-                  </div>
-                  <div className="bg-cyan-50/40 border border-cyan-200/60 p-3 rounded-lg text-center shadow-xs">
-                    <span className="text-[9.5px] text-cyan-700 uppercase tracking-widest font-extrabold block">রুটিন সক্রিয়তা</span>
-                    <span className="text-2xl font-black text-cyan-800 mt-1 block font-mono">{toBnNum(daysCount)} দিন</span>
-                    <span className="text-[10px] text-cyan-600 font-bold block mt-0.5">১ম থেকে শেষ দিন পর্যন্ত</span>
-                  </div>
-                </div>
-
-                {/* Section 2: Habits Column-wise Progress Report */}
-                <div className="mb-4">
-                  <h2 className="text-xs font-extrabold text-indigo-950 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>২. অভ্যাস কলাম ওয়ারী সাফল্য হার (Percentage per Column)</span>
-                  </h2>
-
-                  <div className="space-y-2">
-                    {statistics.columnsList.map((col, idx) => {
-                      const achievementText = col.percentage >= 85 ? "চমৎকার (Excellent)" : col.percentage >= 70 ? "সন্তোষজনক (Satisfactory)" : col.percentage >= 50 ? "চলনসই (Developing)" : "উন্নতি প্রয়োজন (Needs Improvement)";
-                      const statusColor = col.percentage >= 85 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : col.percentage >= 70 ? "text-cyan-700 bg-cyan-50 border-cyan-200" : col.percentage >= 50 ? "text-amber-700 bg-amber-50 border-amber-200" : "text-rose-700 bg-rose-50 border-rose-200";
-                      
-                      const trendArr = col.trend || [];
-                      const smoothed = getSmoothedTrend(trendArr);
-                      const pts = smoothed.map((v, i) => {
-                        const x = smoothed.length > 1 ? 4 + (i / (smoothed.length - 1)) * 72 : 40;
-                        const y = 20 - (v * 16); // Map 0..1 to 20..4
-                        return { x, y };
-                      });
-
-                      const pathD = pts.length > 0 
-                        ? pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-                        : "";
-
-                      const fillD = pts.length > 0
-                        ? `${pathD} L ${pts[pts.length - 1].x.toFixed(1)} 22 L ${pts[0].x.toFixed(1)} 22 Z`
-                        : "";
-
-                      return (
-                        <div key={idx} className="border border-neutral-200 p-2.5 sm:p-3 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-neutral-50/30">
-                          <div className="flex-1 w-full">
-                            <div className="flex justify-between items-center mb-1 text-xs">
-                              <span className="font-extrabold text-slate-900 text-[11px] max-w-[80%] leading-tight">
-                                {toBnNum(idx + 1)}. {col.label}
-                              </span>
-                              <span className="font-black text-indigo-950 font-mono">
-                                {toBnNum(col.count)} / {toBnNum(daysCount)} দিন
-                              </span>
-                            </div>
- 
-                            {/* Progress bar */}
-                            <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex relative">
-                              <motion.div 
-                                className={`h-full ${col.color} rounded-full relative overflow-hidden`}
-                                initial={{ width: 0 }}
-                                animate={{ width: `${col.percentage}%` }}
-                                transition={{ type: "spring", stiffness: 60, damping: 12, restDelta: 0.01 }}
-                              >
-                                {/* Subtle animated sheen sweep */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-                              </motion.div>
-                            </div>
-                          </div>
- 
-                          <div className="flex items-center gap-2.5 shrink-0 sm:self-center self-end w-full sm:w-auto justify-between sm:justify-end">
-                            {/* Sparkline Visualizer */}
-                            <div className="flex flex-col items-center justify-center bg-white border border-slate-200/80 rounded px-1.5 py-0.5 w-24 h-8 select-none shrink-0" title="মাসিক প্রগতি ট্রেন্ড (Habit Trend Sparkline)">
-                              <span className="text-[7px] text-slate-500 font-extrabold tracking-tight leading-none mb-0.5 uppercase">ট্রেন্ড / Trend</span>
-                              <div className="w-full h-4">
-                                <svg className="w-full h-full overflow-visible" viewBox="0 0 80 22" preserveAspectRatio="none">
-                                  <defs>
-                                    <linearGradient id={`spark-grad-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="0%" stopColor={col.stroke} stopOpacity="0.25" />
-                                      <stop offset="100%" stopColor={col.stroke} stopOpacity="0.0" />
-                                    </linearGradient>
-                                  </defs>
-                                  
-                                  {/* Dotted threshold baseline (50% mark) */}
-                                  <line x1="0" y1="12" x2="80" y2="12" stroke="#f1f5f9" strokeWidth="0.75" strokeDasharray="1.5,1.5" />
-                                  
-                                  {pts.length > 0 && (
-                                    <>
-                                      {/* Faded background area under the trend line */}
-                                      <path d={fillD} fill={`url(#spark-grad-${idx})`} stroke="none" />
-                                      
-                                      {/* High-quality anti-aliased path line */}
-                                      <path 
-                                        d={pathD} 
-                                        fill="none" 
-                                        stroke={col.stroke} 
-                                        strokeWidth="1.25" 
-                                        strokeLinecap="round" 
-                                        strokeLinejoin="round" 
-                                      />
-                                      
-                                      {/* Highlight dot on the last day */}
-                                      <circle 
-                                        cx={pts[pts.length - 1].x} 
-                                        cy={pts[pts.length - 1].y} 
-                                        r="1.5" 
-                                        fill={col.stroke} 
-                                      />
-                                    </>
-                                  )}
-                                </svg>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded border border-neutral-250 leading-tight font-mono text-slate-800 bg-white shadow-xs">
-                                {toBnNum(col.percentage)}%
-                              </span>
-                              <span className={`text-[9.5px] font-extrabold px-2 py-0.5 rounded border leading-tight ${statusColor} bg-white/70`}>
-                                {achievementText}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* TAB: A4 PRINTABLE HABIT REPORT CARD COMPONENT */}
+          {activeTab === "report_card" && (
+            <MonthlyHabitReportCard
+              studentName={studentName}
+              studentClass={studentClass}
+              studentRoll={studentRoll}
+              studentPhoto={studentPhoto}
+              selectedMonth={selectedMonth}
+              daysCount={daysCount}
+              rows={rows}
+              col1Header={col1Header}
+              col2Header={col2Header}
+              col3Header={col3Header}
+              col4Header={col4Header}
+              col5Header={col5Header}
+              col6Header={col6Header}
+              monthlyAdvice={monthlyAdvice}
+              principalName={principalName}
+              principalInstruction={principalInstruction}
+              onPrint={handlePrint}
+            />
           )}
 
           {/* TAB 2: GORGEOUS PRINTABLE AWARD CERTIFICATE */}
@@ -6943,6 +6933,16 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
         currentSelectedMonth={selectedMonth}
         autoHighlightEnabled={autoHighlightHolidays}
         onToggleAutoHighlight={handleToggleAutoHighlight}
+      />
+
+      {/* 10-Class Excel Data Importer & Reorganizer Modal */}
+      <ExcelDataImporterModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        onSuccess={(msg) => {
+          setProgressSyncMsg(msg);
+          setTimeout(() => setProgressSyncMsg(""), 6000);
+        }}
       />
 
       {showIframePrintModal && (

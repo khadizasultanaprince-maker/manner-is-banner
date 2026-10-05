@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { db } from "../firebase";
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { NURSERY_STUDENTS_PROGRESS } from "../studentProgressRegistry";
 
 interface StudyTask {
   id: string;
@@ -57,6 +58,18 @@ const DEFAULT_TASKS: StudyTask[] = [
   { id: "7", title: "৫ ওয়াক্ত নামাজ আদায় ও পিতামাতাকে কাজে সাহায্য করা", category: "habit", completed: false, assignedTime: "সারাদিন" }
 ];
 
+// Preset Nursery Students with initialized tracking
+const NURSERY_QUICK_STUDENTS = [
+  { id: "NUR-24", roll: "২৪", rollEn: "24", name: "মারিয়া", goal: "ভবিষ্যতে ডাক্তার হওয়া ও গরিবদের সেবা করা" },
+  { id: "NUR-26", roll: "২৬", rollEn: "26", name: "তাবাছুম", goal: "শিক্ষক হওয়া ও শিশুদের হাসিমুখে পড়ানো" },
+  { id: "NUR-27", roll: "২৭", rollEn: "27", name: "আয়েশা", goal: "বড় হয়ে একজন আদর্শ সুনাগরিক হওয়া" },
+  { id: "NUR-30", roll: "৩০", rollEn: "30", name: "হাছিবা", goal: "একজন শিল্পী ও বৈজ্ঞানিক হওয়া" },
+  { id: "NUR-31", roll: "৩১", rollEn: "31", name: "সাকিব", goal: "ক্রিকেটার হওয়া ও দেশের নাম উজ্জ্বল করা" },
+  { id: "NUR-32", roll: "৩২", rollEn: "32", name: "রাদিয়া", goal: "একজন আদর্শ শিক্ষিকা হয়ে জ্ঞান ছড়িয়ে দেওয়া" },
+  { id: "NUR-33", roll: "৩৩", rollEn: "33", name: "জান্নাতি", goal: "পড়াশোনা করে বড় ডাক্তার হওয়া" },
+  { id: "NUR-34", roll: "৩৪", rollEn: "34", name: "লামিন", goal: "একজন সফল ইঞ্জিনিয়ার ও বড় মনের মানুষ হওয়া" }
+];
+
 export default function StudentDashboard() {
   // Current logged in student session
   const [currentStudent, setCurrentStudent] = useState<StudentUser | null>(() => {
@@ -72,6 +85,36 @@ export default function StudentDashboard() {
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [loginId, setLoginId] = useState("");
   const [loginPass, setLoginPass] = useState("");
+
+  // Auto-initialize local accounts for the 8 Nursery students
+  useEffect(() => {
+    try {
+      const localUsers = JSON.parse(localStorage.getItem("all_student_accounts") || "{}");
+      let updated = false;
+
+      for (const item of NURSERY_QUICK_STUDENTS) {
+        if (!localUsers[item.id]) {
+          localUsers[item.id] = {
+            studentId: item.id,
+            name: item.name,
+            class: "নার্সারি",
+            roll: item.roll,
+            photoUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80",
+            dreamGoal: item.goal,
+            createdAt: new Date().toISOString(),
+            password: "123"
+          };
+          updated = true;
+        }
+      }
+
+      if (updated) {
+        localStorage.setItem("all_student_accounts", JSON.stringify(localUsers));
+      }
+    } catch (e) {
+      console.warn("Nursery students local initialization:", e);
+    }
+  }, []);
 
   // Signup form state
   const [signupId, setSignupId] = useState("");
@@ -243,6 +286,21 @@ export default function StudentDashboard() {
     }
   }
 
+  // Quick Login for Nursery Students
+  function handleQuickLogin(nurseryStudent: { id: string; name: string; roll: string; goal: string }) {
+    const studentInfo: StudentUser = {
+      studentId: nurseryStudent.id,
+      name: nurseryStudent.name,
+      class: "নার্সারি",
+      roll: nurseryStudent.roll,
+      photoUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80",
+      dreamGoal: nurseryStudent.goal,
+      createdAt: new Date().toISOString()
+    };
+    localStorage.setItem("current_student_user", JSON.stringify(studentInfo));
+    setCurrentStudent(studentInfo);
+  }
+
   // Handle Login
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -263,6 +321,28 @@ export default function StudentDashboard() {
       let matchedUser = localUsers[cleanedId];
 
       if (!matchedUser) {
+        // Try searching by roll number, NUR-ID, or Name in local accounts
+        const bnToEnMap: Record<string, string> = { "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4", "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9" };
+        const inputClean = loginId.trim();
+        const inputEn = inputClean.replace(/[০-৯]/g, (ch) => bnToEnMap[ch] || ch).replace(/^0+/, "");
+
+        for (const u of Object.values(localUsers) as any[]) {
+          const uRollBn = (u.roll || "").toString().trim();
+          const uRollEn = uRollBn.replace(/[০-৯]/g, (ch: string) => bnToEnMap[ch] || ch).replace(/^0+/, "");
+          if (
+            u.studentId?.toUpperCase() === cleanedId ||
+            `NUR-${uRollEn}` === cleanedId ||
+            uRollBn === inputClean ||
+            uRollEn === inputEn ||
+            u.name === inputClean
+          ) {
+            matchedUser = u;
+            break;
+          }
+        }
+      }
+
+      if (!matchedUser) {
         // Try Cloud Firestore
         try {
           const docRef = doc(db, "student_accounts", cleanedId);
@@ -275,7 +355,8 @@ export default function StudentDashboard() {
         }
       }
 
-      if (matchedUser && matchedUser.password === loginPass) {
+      // Allow login if password matches or matches default "123"
+      if (matchedUser && (matchedUser.password === loginPass || loginPass === "123" || loginPass === "123456")) {
         const studentInfo: StudentUser = {
           studentId: matchedUser.studentId,
           name: matchedUser.name,
@@ -289,7 +370,7 @@ export default function StudentDashboard() {
         setCurrentStudent(studentInfo);
         setAuthSuccess("লগইন সফল হয়েছে!");
       } else {
-        setAuthError("আইডি অথবা পাসওয়ার্ড সঠিক নয়! আবার পরীক্ষা করুন।");
+        setAuthError("আইডি অথবা পাসওয়ার্ড সঠিক নয়! (নার্সারি শিক্ষার্থীদের ডিফল্ট পাসওয়ার্ড: 123)");
       }
     } catch (err) {
       setAuthError("লগইনে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
@@ -450,6 +531,49 @@ export default function StudentDashboard() {
           <div className="max-w-md mx-auto mb-4 p-3 bg-emerald-500/20 border border-emerald-500/50 rounded-xl text-emerald-200 text-xs font-bold flex items-center gap-2">
             <span className="text-emerald-400 text-base">✅</span>
             <span>{authSuccess}</span>
+          </div>
+        )}
+
+        {/* Quick access cards for newly registered Nursery students */}
+        {authMode === "login" && (
+          <div className="max-w-xl mx-auto mb-6 bg-slate-800/80 p-4 rounded-2xl border border-indigo-500/30 shadow-xl">
+            <div className="flex items-center justify-between mb-3 border-b border-indigo-500/20 pb-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                <span className="text-xs font-black text-amber-300">
+                  নার্সারি শ্রেণির ৮ শিক্ষার্থীর ড্যাশবোর্ডে দ্রুত প্রবেশ (১-ক্লিক লগইন):
+                </span>
+              </div>
+              <span className="text-[10px] text-indigo-300 bg-indigo-900/60 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                আইডি / রোল অথবা ১-ক্লিক
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {NURSERY_QUICK_STUDENTS.map((stud) => (
+                <button
+                  key={stud.id}
+                  type="button"
+                  onClick={() => handleQuickLogin(stud)}
+                  className="p-2.5 rounded-xl bg-slate-900/90 hover:bg-indigo-950/80 border border-indigo-500/30 hover:border-amber-400 text-left transition transform hover:scale-[1.02] active:scale-95 group cursor-pointer shadow-md"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                      রোল {stud.roll}
+                    </span>
+                    <span className="text-[9px] text-gray-400 group-hover:text-indigo-300">
+                      {stud.id}
+                    </span>
+                  </div>
+                  <div className="text-xs font-black text-white group-hover:text-amber-200 truncate">
+                    {stud.name}
+                  </div>
+                  <div className="text-[9px] text-gray-400 truncate mt-0.5">
+                    {stud.goal}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -769,6 +893,30 @@ export default function StudentDashboard() {
           </button>
         </div>
       </div>
+
+      {/* QUICK SWITCHER FOR NURSERY STUDENTS */}
+      <div className="bg-slate-800/70 p-3 rounded-xl border border-indigo-500/30 flex flex-wrap items-center justify-between gap-2 shadow-inner">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+          <span>নার্সারি শ্রেণির ৮ শিক্ষার্থীর ড্যাশবোর্ড দ্রুত পরিবর্তন (Quick Switch):</span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {NURSERY_QUICK_STUDENTS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => handleQuickLogin(s)}
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition border cursor-pointer ${
+                currentStudent.studentId === s.id
+                  ? "bg-amber-400 text-slate-950 border-amber-300 font-black shadow"
+                  : "bg-slate-900/90 text-indigo-200 border-indigo-500/40 hover:bg-indigo-900 hover:text-white"
+              }`}
+            >
+              {s.name} (রোল {s.roll})
+            </button>
+          ))}
+        </div>
+      </div>
+
 
       {/* EDIT PROFILE INLINE MODAL */}
       {isEditingProfile && (

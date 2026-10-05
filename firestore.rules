@@ -13,5 +13,11 @@ service cloud.firestore {
     match /home_visits/{document} {
       allow read, write: if true;
     }
+    match /student_accounts/{document} {
+      allow read, write: if true;
+    }
+    match /students/{document} {
+      allow read, write: if true;
+    }
   }
 }
