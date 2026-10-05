@@ -48,11 +48,15 @@ import {
   Camera,
   Upload,
   Home,
-  FileSpreadsheet
+  FileSpreadsheet,
+  GraduationCap,
+  ShieldCheck
 } from "lucide-react";
 import { db } from "./firebase";
 import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
 import StudentDashboard from "./components/StudentDashboard";
+import { ExamAndSecuritySuite } from "./components/exam_suite/ExamAndSecuritySuite";
+import { VoiceInputButton } from "./components/VoiceInputButton";
 import AuthPortal from "./components/AuthPortal";
 import SupportTroubleshooter from "./components/SupportTroubleshooter";
 import { PerformanceAnalyzerModal } from "./components/PerformanceAnalyzerModal";
@@ -420,8 +424,8 @@ export default function App() {
     localStorage.removeItem("app_global_user");
   };
 
-  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard vs. Support Troubleshooter vs. Home Visits vs. Habit Report Card
-  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "report_card" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard" | "troubleshooter" | "home_visits">("routine");
+  // Multi-tab design: Routine Tracker sheet vs. Dynamic Award Certificate vs. Statistical Summary vs. Developer Integrations vs. Parent Meeting Event Plan vs. Parent Meeting Slides vs. Student Dashboard vs. Support Troubleshooter vs. Home Visits vs. Habit Report Card vs. Exam & Security Suite
+  const [activeTab, setActiveTab] = useState<"routine" | "certificate" | "summary" | "report_card" | "integrations" | "event" | "slides" | "progress_report" | "student_dashboard" | "troubleshooter" | "home_visits" | "exam_security">("routine");
 
   // Supabase & Cloud Integrations states
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem("supabase_url") || "");
@@ -2418,6 +2422,22 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
+              onClick={() => setActiveTab("exam_security")}
+              className={`px-4 py-2 bg-gradient-to-r from-amber-500 via-indigo-600 to-emerald-600 hover:brightness-110 text-white rounded-lg text-xs font-black transition flex items-center gap-2 shadow-md active:scale-95 cursor-pointer ring-2 ${
+                activeTab === "exam_security" ? "ring-amber-300 shadow-amber-500/50" : "ring-amber-400/50"
+              }`}
+              title="ডিজিটাল গেট নিরাপত্তা, স্মার্ট আইডি কার্ড, প্রশ্নপত্র ও রেজাল্ট ট্রান্সক্রিপ্ট"
+              id="top-exam-security-btn"
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-200 animate-pulse" />
+              <span>ডিজিটাল নিরাপত্তা ও পরীক্ষা</span>
+              <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full shadow-2xs font-mono">
+                নতুন
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab("home_visits")}
               className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
               title="শিক্ষকদের আচমকা বাড়ি পরিদর্শন ফরম ও ডাটাবেস"
@@ -2474,6 +2494,8 @@ export default function App() {
                   ? "A4 অভিভাবক সভা ইভেন্ট প্ল্যান প্রিন্ট"
                   : activeTab === "slides"
                   ? "A4 অভিভাবক সভা স্লাইড হ্যান্ডআউট প্রিন্ট"
+                  : activeTab === "exam_security"
+                  ? "A4 পরীক্ষা ও সিকিউরিটি শিট প্রিন্ট"
                   : "প্রিন্ট প্রযোজ্য নয়"
                 }
               </span>
@@ -2536,6 +2558,41 @@ export default function App() {
             <span className="font-bold">⚠️ প্রিন্ট বাটন কাজ করছে না / ডাউনলোড পপআপ আসছে না? </span>
             ভঙ্গুর আইফ্রেম (Iframe) নিরাপত্তা ব্লকের কারণে ব্রাউজার সরাসরি প্রিন্ট রিকোয়েস্ট আটকে দেয়। সমাধান খুবই সহজ! অনুগ্রহ করে এখনই উপরে ডান দিকের মেম্বর কর্নারে থাকা <span className="font-bold bg-amber-100 px-1 py-0.5 border border-amber-350 rounded">"Open in new tab / নতুন ট্যাবে খুলুন (↗)"</span> বাটনে ক্লিক করে অ্যাপ্লিকেশনটি নতুন উইন্ডোতে লোড করুন। নতুন ট্যাবে গিয়ে "প্রিন্ট" বাটনে ক্লিক করলেই ম্যাজিকের মতো ১০০% সফলভাবে A4 পিডিএফ প্রিন্ট করতে পারবেন।
           </div>
+        </div>
+      </div>
+
+      {/* HIGHLIGHT BANNER: DIGITAL SECURITY & EXAM MANAGEMENT SUITE */}
+      <div className="no-print bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 border-b-2 border-amber-400 py-3.5 px-4 shadow-xl text-white">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 via-indigo-600 to-emerald-500 p-0.5 shadow-lg">
+              <div className="w-full h-full bg-slate-950 rounded-xl flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-amber-300 animate-pulse" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-xs sm:text-sm text-white">
+                  🛡️ ডিজিটাল ক্যাম্পাস নিরাপত্তা ও পরীক্ষা নিয়ন্ত্রণ স্যুট চালু রয়েছে!
+                </span>
+                <span className="text-[9px] bg-emerald-500 text-slate-950 font-black px-2 py-0.2 rounded-full uppercase">
+                  নতুন ফিচার
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                গেট স্ক্যানার ও রিয়েল-টাইম অভিভাবক SMS • স্মার্ট আইডি কার্ড • প্রশ্নপত্র • এডমিট কার্ড • রেজাল্ট ও ট্রান্সক্রিপ্ট • অভিভাবক সভা
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("exam_security")}
+            className="px-4 py-2 bg-gradient-to-r from-amber-500 via-indigo-600 to-emerald-600 hover:brightness-110 text-white text-xs font-black rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer active:scale-95 ring-2 ring-amber-300"
+          >
+            <span>সরাসরি ডিজিটাল নিরাপত্তা ও পরীক্ষা প্যানেল খুলুন</span>
+            <ChevronRight className="w-4 h-4 text-amber-200" />
+          </button>
         </div>
       </div>
 
@@ -3501,6 +3558,23 @@ export default function App() {
             <span>📊 এক্সেল ১০-শ্রেণি প্রতিস্থাপন</span>
             <span className="text-[9px] bg-amber-300 text-slate-950 font-black px-1.5 py-0.2 rounded shadow-2xs font-mono">
               ইম্পোর্ট
+            </span>
+          </button>
+
+          {/* EXAM CONTROLLER & SMART SECURITY SUITE TAB - VISIBLE FOR ALL */}
+          <button
+            onClick={() => setActiveTab("exam_security")}
+            className={`flex-1 min-w-[170px] py-3 px-3 rounded-lg font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === "exam_security"
+                ? "bg-gradient-to-r from-amber-500 via-indigo-600 to-emerald-600 text-white shadow-lg border border-amber-300 ring-2 ring-amber-400"
+                : "bg-indigo-950/80 text-amber-300 hover:bg-indigo-900 border border-indigo-700/60 shadow-sm"
+            }`}
+            title="পরীক্ষা নিয়ন্ত্রণ, রেডিমেট প্রশ্নপত্র, স্মার্ট আইডি কার্ড, গেট স্ক্যানার ও রেজাল্ট ট্রান্সক্রিপ্ট"
+          >
+            <GraduationCap className="w-4 h-4 text-amber-300 animate-pulse" />
+            <span>🎓 পরীক্ষা নিয়ন্ত্রণ ও ডিজিটাল নিরাপত্তা</span>
+            <span className="text-[9px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded shadow-2xs font-mono">
+              নতুন স্যুট
             </span>
           </button>
 
@@ -4894,6 +4968,17 @@ export default function App() {
                                         >
                                           ✨ এআই সহায়িকা (AI Guide)
                                         </button>
+
+                                        {/* Microphone Voice Command Input Button */}
+                                        <div className="no-print">
+                                          <VoiceInputButton
+                                            onTranscript={(spokenText) => updateDailyGoalText(row.date, spokenText)}
+                                            currentValue={row.dailyGoal || ""}
+                                            compact
+                                            buttonText="ভয়েস ইনপুট 🎙️"
+                                          />
+                                        </div>
+
                                         <span className={`text-[10px] font-semibold font-mono px-2 py-0.5 rounded border transition-colors duration-200 ${
                                           row.dailyGoal ? "text-indigo-600 bg-indigo-100/60 border-indigo-200/40" : "text-amber-700 bg-amber-50 border-amber-200"
                                         }`}>
@@ -4930,22 +5015,72 @@ export default function App() {
                                       </motion.div>
                                     )}
                                     
-                                    <motion.textarea
-                                      initial={{ opacity: 0, y: 15 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.05 }}
-                                      rows={2}
-                                      value={row.dailyGoal || ""}
-                                      onChange={(e) => updateDailyGoalText(row.date, e.target.value)}
-                                      onFocus={() => setFocusedRowDate(row.date)}
-                                      placeholder="আজকের নির্ধারিত শিষ্টাচার লক্ষ্য বা বিশেষ প্রচেষ্টা এবং অর্জিত দিনান্তের সচিত্র অনুভূতি ও শিক্ষনীয় বিষয় এখানে বিস্তারিত বিবরণ দিন..."
-                                      className={`w-full bg-white rounded p-2 text-xs sm:text-[12.5px] focus:outline-none focus:ring-1 tracking-wide leading-relaxed shadow-sm transition-all duration-200 ${
-                                        !row.dailyGoal || !row.dailyGoal.trim()
-                                          ? "border-2 border-dashed border-amber-300 focus:ring-amber-500 focus:border-amber-500 text-neutral-800 placeholder:text-gray-400"
-                                          : "border border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500 text-neutral-800 placeholder:text-gray-400 font-sans"
-                                      }`}
-                                      id={`dailygoal-inp-${row.date}`}
-                                    />
+                                    <div className="relative group">
+                                      <motion.textarea
+                                        initial={{ opacity: 0, y: 15 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.05 }}
+                                        rows={2}
+                                        value={row.dailyGoal || ""}
+                                        onChange={(e) => updateDailyGoalText(row.date, e.target.value)}
+                                        onFocus={() => setFocusedRowDate(row.date)}
+                                        placeholder="আজকের নির্ধারিত শিষ্টাচার লক্ষ্য বা বিশেষ প্রচেষ্টা এবং অর্জিত দিনান্তের সচিত্র অনুভূতি ও শিক্ষনীয় বিষয় মুখে বলুন বা বিস্তারিত লিখুন..."
+                                        className={`w-full bg-white rounded p-2 text-xs sm:text-[12.5px] focus:outline-none focus:ring-1 tracking-wide leading-relaxed shadow-sm transition-all duration-200 pr-36 ${
+                                          !row.dailyGoal || !row.dailyGoal.trim()
+                                            ? "border-2 border-dashed border-amber-300 focus:ring-amber-500 focus:border-amber-500 text-neutral-800 placeholder:text-gray-400"
+                                            : "border border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500 text-neutral-800 placeholder:text-gray-400 font-sans"
+                                        }`}
+                                        id={`dailygoal-inp-${row.date}`}
+                                      />
+
+                                      {/* Integrated Voice Input Button anchored right inside Textarea */}
+                                      <div className="absolute right-2 bottom-2 no-print z-10">
+                                        <VoiceInputButton
+                                          onTranscript={(spokenText) => updateDailyGoalText(row.date, spokenText)}
+                                          currentValue={row.dailyGoal || ""}
+                                          compact
+                                          buttonText="মুখে বলুন 🎙️"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* 1-Tap Quick Voice Command Chips */}
+                                    <div className="no-print flex flex-wrap items-center gap-1 pt-1 text-[10.5px]">
+                                      <span className="text-[10px] text-gray-500 font-bold flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3 text-amber-500" />
+                                        <span>ভয়েস প্রিসেট:</span>
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const phrase = "আজকে আমি ৫ ওয়াক্ত নামাজ জামাতে আদায় করেছি।";
+                                          updateDailyGoalText(row.date, row.dailyGoal ? `${row.dailyGoal.trim()} ${phrase}` : phrase);
+                                        }}
+                                        className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md transition cursor-pointer"
+                                      >
+                                        + ৫ ওয়াক্ত নামাজ
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const phrase = "গণিত ও ইংরেজির পড়া এবং ২ পৃষ্ঠা স্পষ্ট হাতের লেখা লিখেছি।";
+                                          updateDailyGoalText(row.date, row.dailyGoal ? `${row.dailyGoal.trim()} ${phrase}` : phrase);
+                                        }}
+                                        className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-md transition cursor-pointer"
+                                      >
+                                        + পড়া ও হাতের লেখা
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const phrase = "মা-বাবার আদেশ মেনে চলেছি এবং বড়দের সালাম দিয়েছি।";
+                                          updateDailyGoalText(row.date, row.dailyGoal ? `${row.dailyGoal.trim()} ${phrase}` : phrase);
+                                        }}
+                                        className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md transition cursor-pointer"
+                                      >
+                                        + মা-বাবার সেবা ও সালাম
+                                      </button>
+                                    </div>
 
                                     {/* AI Autocomplete suggestion dropdown (When focused/activated) */}
                                     {focusedRowDate === row.date && (
@@ -6951,6 +7086,13 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
                   setActiveTab("routine");
                 }}
               />
+            </div>
+          )}
+
+          {/* D-LIKON EXAM CONTROLLER & SMART SECURITY SUITE */}
+          {activeTab === "exam_security" && (
+            <div className="w-full animate-fadeIn">
+              <ExamAndSecuritySuite />
             </div>
           )}
 

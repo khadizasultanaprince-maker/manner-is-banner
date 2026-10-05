@@ -28,6 +28,8 @@ import {
 import { db } from "../firebase";
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { NURSERY_STUDENTS_PROGRESS } from "../studentProgressRegistry";
+import { ParentGuardianPortalView } from "./exam_suite/ParentGuardianPortalView";
+import { VoiceDailyDiaryWidget } from "./VoiceDailyDiaryWidget";
 
 interface StudyTask {
   id: string;
@@ -1027,6 +1029,19 @@ export default function StudentDashboard() {
           </button>
         </div>
       </div>
+
+      {/* D-LIKON SMART PARENT & GUARDIAN PORTAL (Live Gate In/Out, Results, Admit & PTA Meetings) */}
+      <ParentGuardianPortalView
+        studentId={currentStudent.studentId}
+        studentName={currentStudent.name}
+        studentClass={currentStudent.class}
+        studentRoll={currentStudent.roll}
+      />
+
+      {/* VOICE DAILY DIARY & SELF-REFLECTION WIDGET */}
+      <VoiceDailyDiaryWidget
+        currentStudentName={currentStudent.name}
+      />
 
       {/* ASSIGNED STUDY TOPICS & HANDWRITING CHECKLIST */}
       <div className="bg-slate-800/80 p-4 sm:p-5 rounded-2xl border border-indigo-500/30 shadow-xl space-y-4">
