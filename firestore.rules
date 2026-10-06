@@ -19,5 +19,8 @@ service cloud.firestore {
     match /students/{document} {
       allow read, write: if true;
     }
+    match /student_security_profiles/{document} {
+      allow read, write: if true;
+    }
   }
 }

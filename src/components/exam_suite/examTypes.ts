@@ -86,19 +86,33 @@ export interface StudentSecurityProfile {
   emergencyContact: string;
   address: string;
   photoUrl?: string; // শিক্ষার্থীর নিজের ছবি
+  birthCertificateNo?: string; // শিক্ষার্থীর জন্ম নিবন্ধন নম্বর (BRN - ১৭ ডিজিট)
+  dateOfBirth?: string; // শিক্ষার্থীর জন্মতারিখ
+  gender?: string; // লিঙ্গ (ছাত্র / ছাত্রী)
+
+  // পিতার তথ্য (Father Information)
   fatherName?: string; // পিতার নাম
+  fatherNameEnglish?: string; // পিতার নাম (ইংরেজিতে)
+  fatherNid?: string; // পিতার জাতীয় পরিচয়পত্র (এনআইডি) নম্বর
+  fatherDateOfBirth?: string; // পিতার জন্ম তারিখ
   fatherOccupation?: string; // পিতার পেশা
   fatherPhone?: string; // পিতার ফোন নম্বর
   fatherPhotoUrl?: string; // পিতার ছবি
+
+  // মাতার তথ্য (Mother Information)
   motherName?: string; // মাতার নাম
+  motherNameEnglish?: string; // মাতার নাম (ইংরেজিতে)
+  motherNid?: string; // মাতার জাতীয় পরিচয়পত্র (এনআইডি) নম্বর
+  motherDateOfBirth?: string; // মাতার জন্ম তারিখ
   motherOccupation?: string; // মাতার পেশা
   motherPhone?: string; // মাতার ফোন নম্বর
   motherPhotoUrl?: string; // মাতার ছবি
-  dateOfBirth?: string; // জন্মতারিখ
-  gender?: string; // লিঙ্গ (ছাত্র / ছাত্রী)
+
   cardExpiry: string;
   rfidUid?: string; // আরএফআইডি / ডিজিটাল চিপ নম্বর
   admissionDate?: string;
+  updatedAt?: any;
+  createdAt?: any;
 }
 
 export interface GateLog {

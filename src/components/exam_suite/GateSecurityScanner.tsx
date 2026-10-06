@@ -26,7 +26,10 @@ import {
   Sparkles,
   Heart,
   VolumeX,
-  Play
+  Play,
+  Sliders,
+  ZoomIn,
+  ZoomOut
 } from "lucide-react";
 import { GateLog, StudentSecurityProfile } from "./examTypes";
 import { SAMPLE_GATE_LOGS, SAMPLE_SECURITY_PROFILES } from "./examMockData";
@@ -69,6 +72,7 @@ export const GateSecurityScanner: React.FC = () => {
   // Phone Camera Scanner State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string>("");
+  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<any>(null);
@@ -609,12 +613,54 @@ export const GateSecurityScanner: React.FC = () => {
 
                   {isCameraActive && (
                     <div className="bg-slate-950 border-2 border-indigo-500/50 rounded-2xl p-4 flex flex-col items-center justify-center animate-fadeIn relative overflow-hidden">
+                      {/* FOV Zoom Slider Bar */}
+                      <div className="mb-3 w-full max-w-sm flex items-center justify-between gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-indigo-500/40">
+                        <div className="flex items-center gap-1.5 text-indigo-300 text-xs font-black">
+                          <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="text-[11px] whitespace-nowrap">ক্যামেরা জুম (FOV):</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setZoomLevel(prev => Math.max(1.0, parseFloat((prev - 0.2).toFixed(1))))}
+                            disabled={zoomLevel <= 1.0}
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 transition cursor-pointer"
+                            title="জুম কমান"
+                          >
+                            <ZoomOut className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="range"
+                            min="1.0"
+                            max="3.5"
+                            step="0.1"
+                            value={zoomLevel}
+                            onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                            className="w-20 sm:w-28 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                            title={`জুম: ${zoomLevel.toFixed(1)}x`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setZoomLevel(prev => Math.min(3.5, parseFloat((prev + 0.2).toFixed(1))))}
+                            disabled={zoomLevel >= 3.5}
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 transition cursor-pointer"
+                            title="জুম বাড়ান"
+                          >
+                            <ZoomIn className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="font-mono text-xs font-black text-amber-300 min-w-[28px] text-center">
+                            {zoomLevel.toFixed(1)}x
+                          </span>
+                        </div>
+                      </div>
+
                       <div className="relative w-full max-w-sm aspect-[4/3] rounded-xl overflow-hidden bg-black border-2 border-emerald-400 shadow-2xl flex items-center justify-center">
                         <video
                           ref={videoRef}
                           playsInline
                           muted
-                          className="w-full h-full object-cover"
+                          style={{ transform: `scale(${zoomLevel})`, transformOrigin: "center center" }}
+                          className="w-full h-full object-cover transition-transform duration-75 ease-out"
                         />
                         {/* Glowing Green Viewfinder Box & Animated Laser Line */}
                         <div className="absolute inset-8 border-2 border-dashed border-emerald-400 rounded-2xl pointer-events-none flex flex-col justify-between p-2 shadow-[0_0_15px_rgba(52,211,153,0.5)]">

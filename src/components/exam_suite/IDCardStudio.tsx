@@ -637,6 +637,17 @@ export const IDCardStudio: React.FC = () => {
                       <option value="ছাত্রী">ছাত্রী</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="font-bold text-emerald-300 block mb-1">জন্ম নিবন্ধন সনদ নম্বর (BRN):</label>
+                    <input
+                      type="text"
+                      maxLength={17}
+                      value={formData.birthCertificateNo || ""}
+                      onChange={(e) => setFormData({ ...formData, birthCertificateNo: e.target.value })}
+                      placeholder="১৭ ডিজিটের জন্ম নিবন্ধন সনদ নম্বর"
+                      className="w-full bg-slate-900 border border-emerald-500/70 text-emerald-300 font-mono font-bold rounded-xl p-2.5 outline-none"
+                    />
+                  </div>
                 </div>
 
                 {/* Student Photo */}
@@ -722,6 +733,27 @@ export const IDCardStudio: React.FC = () => {
                       />
                     </div>
                     <div>
+                      <label className="text-amber-300 text-[11px] font-bold block mb-0.5">পিতার এনআইডি (NID):</label>
+                      <input
+                        type="text"
+                        maxLength={17}
+                        value={formData.fatherNid || ""}
+                        onChange={(e) => setFormData({ ...formData, fatherNid: e.target.value })}
+                        placeholder="১০/১৩/১৭ ডিজিট"
+                        className="w-full bg-slate-950 border border-indigo-500/70 text-indigo-300 font-mono font-bold rounded-lg p-2 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-[11px] block mb-0.5">পিতার জন্ম তারিখ:</label>
+                      <input
+                        type="text"
+                        value={formData.fatherDateOfBirth || ""}
+                        onChange={(e) => setFormData({ ...formData, fatherDateOfBirth: e.target.value })}
+                        placeholder="যেমন: ১২ মার্চ ১৯৮২"
+                        className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-2 outline-none"
+                      />
+                    </div>
+                    <div>
                       <label className="text-slate-400 text-[11px] block mb-0.5">পিতার পেশা:</label>
                       <input
                         type="text"
@@ -785,6 +817,27 @@ export const IDCardStudio: React.FC = () => {
                         onChange={(e) => setFormData({ ...formData, motherName: e.target.value })}
                         placeholder="যেমন: মোসাম্মাৎ খাদিজা বেগম"
                         className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-2 font-bold outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-pink-300 text-[11px] font-bold block mb-0.5">মাতার এনআইডি (NID):</label>
+                      <input
+                        type="text"
+                        maxLength={17}
+                        value={formData.motherNid || ""}
+                        onChange={(e) => setFormData({ ...formData, motherNid: e.target.value })}
+                        placeholder="১০/১৩/১৭ ডিজিট"
+                        className="w-full bg-slate-950 border border-pink-500/70 text-pink-300 font-mono font-bold rounded-lg p-2 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-[11px] block mb-0.5">মাতার জন্ম তারিখ:</label>
+                      <input
+                        type="text"
+                        value={formData.motherDateOfBirth || ""}
+                        onChange={(e) => setFormData({ ...formData, motherDateOfBirth: e.target.value })}
+                        placeholder="যেমন: ১৮ আগস্ট ১৯৮৬"
+                        className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-2 outline-none"
                       />
                     </div>
                     <div>

@@ -17,17 +17,19 @@ import {
 import { QuestionPaperStudio } from "./QuestionPaperStudio";
 import { SyllabusNotesMaker } from "./SyllabusNotesMaker";
 import { IDCardStudio } from "./IDCardStudio";
+import { StudentParentNIDRegistry } from "./StudentParentNIDRegistry";
 import { GateSecurityScanner } from "./GateSecurityScanner";
 import { AdmitCardStudio } from "./AdmitCardStudio";
 import { MarkEntryAndResultSuite } from "./MarkEntryAndResultSuite";
 import { GuardianMeetingManager } from "./GuardianMeetingManager";
 import { GateSMSConfigPanel } from "./GateSMSConfigPanel";
-import { MessageSquare, Settings } from "lucide-react";
+import { MessageSquare, Settings, IdCard, UserCheck } from "lucide-react";
 
 export type ExamSuiteTab =
   | "question_paper"
   | "syllabus_notes"
   | "id_cards"
+  | "student_nid_registry"
   | "gate_scanner"
   | "gate_sms_config"
   | "admit_cards"
@@ -137,7 +139,26 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
             </div>
           </button>
 
-          {/* 4. Gate Security & Live Messages */}
+          {/* 4. Student & Parent NID Registry Data Entry (User Request) */}
+          <button
+            onClick={() => setActiveTab("student_nid_registry")}
+            className={`p-3 rounded-xl text-left transition flex flex-col justify-between border cursor-pointer ${
+              activeTab === "student_nid_registry"
+                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-400 shadow-lg ring-2 ring-indigo-400 font-bold"
+                : "bg-slate-900/80 text-slate-300 border-slate-800 hover:bg-slate-800 hover:border-slate-700"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <UserCheck className="w-4 h-4 text-emerald-300" />
+              <span className="text-[9px] font-mono opacity-60">০৪</span>
+            </div>
+            <div>
+              <span className="text-xs font-black block leading-tight text-white">এনআইডি ও জন্ম তথ্য এন্ট্রি</span>
+              <span className="text-[10px] text-amber-300 font-bold leading-tight block mt-0.5">পিতামাতা ও ছবি আপলোড</span>
+            </div>
+          </button>
+
+          {/* 5. Gate Security & Live Messages */}
           <button
             onClick={() => setActiveTab("gate_scanner")}
             className={`p-3 rounded-xl text-left transition flex flex-col justify-between border cursor-pointer ${
@@ -239,6 +260,7 @@ export const ExamAndSecuritySuite: React.FC<ExamAndSecuritySuiteProps> = ({
         {activeTab === "question_paper" && <QuestionPaperStudio />}
         {activeTab === "syllabus_notes" && <SyllabusNotesMaker />}
         {activeTab === "id_cards" && <IDCardStudio />}
+        {activeTab === "student_nid_registry" && <StudentParentNIDRegistry />}
         {activeTab === "gate_scanner" && <GateSecurityScanner />}
         {activeTab === "gate_sms_config" && <GateSMSConfigPanel />}
         {activeTab === "admit_cards" && <AdmitCardStudio />}

@@ -97,6 +97,42 @@
         "createdAt": "timestamp"
       },
       "indexes": []
+    },
+    "student_security_profiles": {
+      "schema": {
+        "studentId": "string",
+        "indexNumber": "string",
+        "name": "string",
+        "nameEnglish": "string",
+        "className": "string",
+        "roll": "string",
+        "bloodGroup": "string",
+        "dateOfBirth": "string",
+        "birthCertificateNo": "string",
+        "gender": "string",
+        "address": "string",
+        "photoUrl": "string",
+        "fatherName": "string",
+        "fatherNameEnglish": "string",
+        "fatherNid": "string",
+        "fatherDateOfBirth": "string",
+        "fatherOccupation": "string",
+        "fatherPhone": "string",
+        "fatherPhotoUrl": "string",
+        "motherName": "string",
+        "motherNameEnglish": "string",
+        "motherNid": "string",
+        "motherDateOfBirth": "string",
+        "motherOccupation": "string",
+        "motherPhone": "string",
+        "motherPhotoUrl": "string",
+        "guardianName": "string",
+        "guardianPhone": "string",
+        "emergencyContact": "string",
+        "cardExpiry": "string",
+        "updatedAt": "timestamp"
+      },
+      "indexes": []
     }
   }
 }

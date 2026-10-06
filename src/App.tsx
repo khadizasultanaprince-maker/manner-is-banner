@@ -52,12 +52,15 @@ import {
   GraduationCap,
   ShieldCheck,
   Save,
-  ArrowRight
+  ArrowRight,
+  Scan,
+  History
 } from "lucide-react";
 import { db } from "./firebase";
 import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
 import StudentDashboard from "./components/StudentDashboard";
-import { ExamAndSecuritySuite } from "./components/exam_suite/ExamAndSecuritySuite";
+import { ExamAndSecuritySuite, ExamSuiteTab } from "./components/exam_suite/ExamAndSecuritySuite";
+import { TopExamSecurityQRScanner } from "./components/exam_suite/TopExamSecurityQRScanner";
 import { VoiceInputButton } from "./components/VoiceInputButton";
 import AuthPortal from "./components/AuthPortal";
 import SupportTroubleshooter from "./components/SupportTroubleshooter";
@@ -1043,6 +1046,38 @@ export default function App() {
   const [savingStatus, setSavingStatus] = useState<"idle" | "success" | "error">("idle");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [routineToastMsg, setRoutineToastMsg] = useState("");
+  const [isTopQRScannerOpen, setIsTopQRScannerOpen] = useState(false);
+  const [topQRScannerInitialTab, setTopQRScannerInitialTab] = useState<"scanner" | "history">("scanner");
+  const [examSuiteInitialSubTab, setExamSuiteInitialSubTab] = useState<ExamSuiteTab>("student_nid_registry");
+  const [cameraZoomLevel, setCameraZoomLevel] = useState<number>(1.0);
+  const [gateLogsCount, setGateLogsCount] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("dlikon_gate_logs");
+      return saved ? JSON.parse(saved).length : 5;
+    } catch {
+      return 5;
+    }
+  });
+
+  useEffect(() => {
+    const updateLogsCount = () => {
+      try {
+        const saved = localStorage.getItem("dlikon_gate_logs");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setGateLogsCount(parsed.length);
+        } else {
+          setGateLogsCount(0);
+        }
+      } catch {}
+    };
+    window.addEventListener("storage", updateLogsCount);
+    window.addEventListener("gate_log_added", updateLogsCount);
+    return () => {
+      window.removeEventListener("storage", updateLogsCount);
+      window.removeEventListener("gate_log_added", updateLogsCount);
+    };
+  }, []);
   const isSwitchingStudentRef = useRef<boolean>(false);
   const activeLoadedStudentRef = useRef<{ cCls: string; nRoll: string }>({
     cCls: getCanonicalClassName(localStorage.getItem("studentClass") || "পঞ্চম শ্রেণি"),
@@ -2655,21 +2690,127 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab("exam_security")}
-              className={`px-4 py-2 bg-gradient-to-r from-amber-500 via-indigo-600 to-emerald-600 hover:brightness-110 text-white rounded-lg text-xs font-black transition flex items-center gap-2 shadow-md active:scale-95 cursor-pointer ring-2 ${
-                activeTab === "exam_security" ? "ring-amber-300 shadow-amber-500/50" : "ring-amber-400/50"
-              }`}
-              title="ডিজিটাল গেট নিরাপত্তা, স্মার্ট আইডি কার্ড, প্রশ্নপত্র ও রেজাল্ট ট্রান্সক্রিপ্ট"
+            {/* TOP EXAM SECURITY & QR SCANNER CONTAINER */}
+            <div
               id="top-exam-security-btn"
+              className="relative inline-flex flex-wrap items-center gap-1.5 p-1 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-xl border border-amber-400/60 shadow-md"
             >
-              <ShieldCheck className="w-4 h-4 text-amber-200 animate-pulse" />
-              <span>ডিজিটাল নিরাপত্তা ও পরীক্ষা</span>
-              <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full shadow-2xs font-mono">
-                নতুন
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("exam_security")}
+                className={`px-3 py-2 bg-gradient-to-r from-amber-500 via-indigo-600 to-emerald-600 hover:brightness-110 text-white rounded-lg text-xs font-black transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer ring-2 ${
+                  activeTab === "exam_security" ? "ring-amber-300 shadow-amber-500/50" : "ring-amber-400/40"
+                }`}
+                title="ডিজিটাল গেট নিরাপত্তা, স্মার্ট আইডি কার্ড, প্রশ্নপত্র ও রেজাল্ট ট্রান্সক্রিপ্ট"
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-200 animate-pulse" />
+                <span>ডিজিটাল নিরাপত্তা ও পরীক্ষা</span>
+                <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full shadow-2xs font-mono">
+                  মেনু
+                </span>
+              </button>
+
+              {/* Direct Quick Button for Student & Parent NID Data Entry */}
+              <button
+                type="button"
+                onClick={() => {
+                  setExamSuiteInitialSubTab("student_nid_registry");
+                  setActiveTab("exam_security");
+                }}
+                className={`px-3 py-2 bg-gradient-to-r from-indigo-700 via-purple-700 to-indigo-800 hover:brightness-110 text-white rounded-lg text-xs font-black transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer border border-purple-400/50 ${
+                  activeTab === "exam_security" && examSuiteInitialSubTab === "student_nid_registry"
+                    ? "ring-2 ring-purple-300 shadow-purple-500/50"
+                    : ""
+                }`}
+                title="প্রতিটি শিক্ষার্থীর ইনডেক্স অনুযায়ী জন্ম নিবন্ধন, পিতামাতার এনআইডি ও ছবি এন্ট্রি করুন"
+                id="student-nid-entry-trigger-btn"
+              >
+                <UserCheck className="w-4 h-4 text-pink-300" />
+                <span>এনআইডি ডাটা এন্ট্রি</span>
+                <span className="px-1.5 py-0.2 bg-emerald-400 text-slate-950 text-[10px] font-black rounded-full font-mono">
+                  শুরু করুন
+                </span>
+              </button>
+
+              {/* Live Device Camera QR Scanner Launch Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setTopQRScannerInitialTab("scanner");
+                  setIsTopQRScannerOpen(true);
+                }}
+                className={`px-3 py-2 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border ${
+                  isTopQRScannerOpen && topQRScannerInitialTab === "scanner"
+                    ? "bg-rose-600 text-white border-rose-400 animate-pulse"
+                    : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/80 shadow-emerald-900/30"
+                }`}
+                title="ডিভাইসের লাইভ ক্যামেরা দিয়ে আইডি কার্ডের কিউআর কোড স্ক্যান করুন ও অভিভাবকের অ্যাপে ভয়েস নোটিফিকেশন পাঠান"
+                id="camera-qr-scanner-trigger-btn"
+              >
+                <Scan className="w-4 h-4 text-emerald-200 animate-spin" />
+                <span>📷 কিউআর স্ক্যানার</span>
+              </button>
+
+              {/* Scan History Button (স্ক্যান ইতিহাস বাটন) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setTopQRScannerInitialTab("history");
+                  setIsTopQRScannerOpen(true);
+                }}
+                className={`px-3 py-2 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border ${
+                  isTopQRScannerOpen && topQRScannerInitialTab === "history"
+                    ? "bg-indigo-600 text-white border-indigo-400 shadow-indigo-900/50"
+                    : "bg-slate-800 hover:bg-slate-750 text-amber-300 border-amber-400/40 hover:border-amber-400"
+                }`}
+                title="বর্তমানে স্ক্যান করা আইডি কার্ডের তালিকা ও ইতিহাস দেখুন"
+                id="scan-history-btn"
+              >
+                <History className="w-4 h-4 text-amber-400" />
+                <span>স্ক্যান ইতিহাস</span>
+                <span className="ml-0.5 px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full font-mono">
+                  {toBnNum(gateLogsCount)}টি
+                </span>
+              </button>
+
+              {/* Camera Field of View (FOV) Zoom Slider directly in #top-exam-security-btn */}
+              <div
+                id="camera-fov-zoom-container"
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-950/90 border border-amber-400/40 hover:border-amber-400 rounded-lg text-xs shadow-inner transition-colors"
+                title="স্ক্যানার ক্যামেরার ফিল্ড অফ ভিউ (FOV) জুম নিয়ন্ত্রণ করুন (১.০x - ৩.৫x)"
+              >
+                <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-[10px] font-bold text-slate-300 whitespace-nowrap">FOV জুম:</span>
+                <input
+                  type="range"
+                  min="1.0"
+                  max="3.5"
+                  step="0.1"
+                  value={cameraZoomLevel}
+                  onChange={(e) => setCameraZoomLevel(parseFloat(e.target.value))}
+                  id="camera-fov-zoom-slider"
+                  className="w-16 sm:w-20 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                  title={`ক্যামেরা জুম স্তর: ${toBnNum(cameraZoomLevel.toFixed(1))}x`}
+                />
+                <span className="font-mono text-[10px] font-black text-amber-300 min-w-[28px] text-center bg-slate-900 px-1 py-0.5 rounded border border-slate-750">
+                  {toBnNum(cameraZoomLevel.toFixed(1))}x
+                </span>
+              </div>
+
+              {/* QR Scanner Interface Modal directly inside #top-exam-security-btn */}
+              {isTopQRScannerOpen && (
+                <TopExamSecurityQRScanner
+                  initialTab={topQRScannerInitialTab}
+                  zoomLevel={cameraZoomLevel}
+                  onZoomChange={(newZoom) => setCameraZoomLevel(newZoom)}
+                  onClose={() => setIsTopQRScannerOpen(false)}
+                  onViewSuite={() => {
+                    setIsTopQRScannerOpen(false);
+                    setActiveTab("exam_security");
+                  }}
+                />
+              )}
+            </div>
 
             <button
               type="button"
@@ -7545,7 +7686,7 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
           {/* D-LIKON EXAM CONTROLLER & SMART SECURITY SUITE */}
           {activeTab === "exam_security" && (
             <div className="w-full animate-fadeIn">
-              <ExamAndSecuritySuite />
+              <ExamAndSecuritySuite initialSubTab={examSuiteInitialSubTab} />
             </div>
           )}
 
