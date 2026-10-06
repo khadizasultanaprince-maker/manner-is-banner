@@ -1,6 +1,8 @@
 export interface Student {
   roll: string;
   name: string;
+  fatherName?: string;
+  contactPhone?: string;
 }
 
 export const DEFAULT_STUDENTS_BY_CLASS: Record<string, Student[]> = {

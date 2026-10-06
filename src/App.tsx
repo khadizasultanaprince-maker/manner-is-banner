@@ -50,7 +50,9 @@ import {
   Home,
   FileSpreadsheet,
   GraduationCap,
-  ShieldCheck
+  ShieldCheck,
+  Save,
+  ArrowRight
 } from "lucide-react";
 import { db } from "./firebase";
 import DailyGoalD3Chart from "./components/DailyGoalD3Chart";
@@ -515,8 +517,39 @@ export default function App() {
   ]);
 
   // --- Missing/Durable States & Controllers ---
+  const createBlankRoutineRows = (count: number = 31): DayRow[] => {
+    return Array.from({ length: count }, (_, i) => ({
+      date: i + 1,
+      col1Checked: false,
+      col2Checked: false,
+      col3Checked: false,
+      col4Checked: false,
+      col5Checked: false,
+      col6Checked: false,
+      fajrChecked: false,
+      dhuhrChecked: false,
+      asrChecked: false,
+      maghribChecked: false,
+      ishaChecked: false,
+      eveningSubject: "",
+      dailyNote: "",
+      dailyGoal: "",
+      col1Val: "",
+      col2Val: "",
+      col3Val: "",
+      col4Val: "",
+      col5Val: "",
+      col6Val: ""
+    }));
+  };
+
   const [rows, setRows] = useState<DayRow[]>(() => {
-    const saved = localStorage.getItem("routineRows");
+    const curClass = localStorage.getItem("studentClass") || "পঞ্চম শ্রেণি";
+    const curRoll = localStorage.getItem("studentRoll") || "০৫";
+    const cCls = getCanonicalClassName(curClass);
+    const nRoll = normalizeRollDigits(curRoll);
+    const specificSaved = cCls && nRoll ? localStorage.getItem(`routine_rows_${cCls}_${nRoll}`) : null;
+    const saved = specificSaved || localStorage.getItem("routineRows");
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as DayRow[];
@@ -541,29 +574,7 @@ export default function App() {
         // fallback
       }
     }
-    return Array.from({ length: 31 }, (_, i) => ({
-      date: i + 1,
-      col1Checked: false,
-      col2Checked: false,
-      col3Checked: false,
-      col4Checked: false,
-      col5Checked: false,
-      col6Checked: false,
-      eveningSubject: "",
-      dailyNote: "",
-      dailyGoal: "",
-      col1Val: "",
-      col2Val: "",
-      col3Val: "",
-      col4Val: "",
-      col5Val: "",
-      col6Val: "",
-      fajrChecked: false,
-      dhuhrChecked: false,
-      asrChecked: false,
-      maghribChecked: false,
-      ishaChecked: false,
-    }));
+    return createBlankRoutineRows(31);
   });
 
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({});
@@ -935,17 +946,29 @@ export default function App() {
   };
 
   const clearAllBoxes = () => {
+    setHasUnsavedChanges(true);
     setRows(prev => prev.map(row => ({
       ...row,
       col1Checked: false,
       col2Checked: false,
       col3Checked: false,
       col4Checked: false,
+      col5Checked: false,
+      col6Checked: false,
       fajrChecked: false,
       dhuhrChecked: false,
       asrChecked: false,
       maghribChecked: false,
-      ishaChecked: false
+      ishaChecked: false,
+      eveningSubject: "",
+      dailyGoal: "",
+      dailyNote: "",
+      col1Val: "",
+      col2Val: "",
+      col3Val: "",
+      col4Val: "",
+      col5Val: "",
+      col6Val: ""
     })));
   };
 
@@ -1007,6 +1030,7 @@ export default function App() {
   };
 
   const updateDailyGoalText = (date: number, text: string) => {
+    setHasUnsavedChanges(true);
     setRows(prev => prev.map(row => {
       if (row.date === date) {
         return { ...row, dailyGoal: text };
@@ -1017,6 +1041,33 @@ export default function App() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [savingStatus, setSavingStatus] = useState<"idle" | "success" | "error">("idle");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [routineToastMsg, setRoutineToastMsg] = useState("");
+  const isSwitchingStudentRef = useRef<boolean>(false);
+  const activeLoadedStudentRef = useRef<{ cCls: string; nRoll: string }>({
+    cCls: getCanonicalClassName(localStorage.getItem("studentClass") || "পঞ্চম শ্রেণি"),
+    nRoll: normalizeRollDigits(localStorage.getItem("studentRoll") || "০৫")
+  });
+
+  const playSuccessChime = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch {
+      // AudioContext not available or blocked
+    }
+  };
+
   const [isLoadingCloud, setIsLoadingCloud] = useState(true);
   const [savedRoutines, setSavedRoutines] = useState<any[]>([]);
   const [certAwardOverride, setCertAwardOverride] = useState<"auto" | "gold" | "silver" | "bronze">("auto");
@@ -1029,6 +1080,7 @@ export default function App() {
   }, [certSignerLeft, certSignerRight]);
 
   const toggleCell = (date: number, colKey: "col1Checked" | "col2Checked" | "col3Checked" | "col4Checked" | "col5Checked" | "col6Checked") => {
+    setHasUnsavedChanges(true);
     setRows(prev => prev.map(row => {
       if (row.date === date) {
         return {
@@ -1041,6 +1093,7 @@ export default function App() {
   };
 
   const togglePrayer = (date: number, key: "fajrChecked" | "dhuhrChecked" | "asrChecked" | "maghribChecked" | "ishaChecked") => {
+    setHasUnsavedChanges(true);
     setRows(prev => prev.map(row => {
       if (row.date === date) {
         return {
@@ -1145,13 +1198,24 @@ export default function App() {
   }, [studentName, studentClass, studentRoll, selectedMonth, daysCount, startDayIndex, col1Header, col2Header, col3Header, col4Header, col5Header, col6Header, monthlyAdvice]);
 
   useEffect(() => {
-    localStorage.setItem("routineRows", JSON.stringify(rows));
+    // If a new student is actively being loaded, do not overwrite their key with previous rows!
+    if (isSwitchingStudentRef.current) return;
+
     const cCls = getCanonicalClassName(studentClass);
     const nRoll = normalizeRollDigits(studentRoll);
-    if (cCls && nRoll) {
-      localStorage.setItem(`routine_rows_${cCls}_${nRoll}`, JSON.stringify(rows));
+
+    // Only save if the currently active student ref matches
+    if (
+      activeLoadedStudentRef.current &&
+      activeLoadedStudentRef.current.cCls === cCls &&
+      activeLoadedStudentRef.current.nRoll === nRoll
+    ) {
+      localStorage.setItem("routineRows", JSON.stringify(rows));
+      if (cCls && nRoll) {
+        localStorage.setItem(`routine_rows_${cCls}_${nRoll}`, JSON.stringify(rows));
+      }
     }
-  }, [rows, studentClass, studentRoll]);
+  }, [rows]);
 
   useEffect(() => {
     localStorage.setItem("principalApproved", principalApproved ? "true" : "false");
@@ -1161,6 +1225,7 @@ export default function App() {
 
   // Handle evening subject text update
   const updateEveningText = (date: number, text: string) => {
+    setHasUnsavedChanges(true);
     setRows(prev => prev.map(row => {
       if (row.date === date) {
         return { ...row, eveningSubject: text };
@@ -1171,6 +1236,7 @@ export default function App() {
 
   // Handle actual custom inputs/deviations for each checkbox column
   const updateCellValue = (date: number, key: "col1Val" | "col2Val" | "col3Val" | "col4Val" | "col5Val" | "col6Val", text: string) => {
+    setHasUnsavedChanges(true);
     setRows(prev => prev.map(row => {
       if (row.date === date) {
         return { ...row, [key]: text };
@@ -1181,6 +1247,7 @@ export default function App() {
 
   // Handle daily encouraging note update
   const updateDailyNoteText = (date: number, text: string) => {
+    setHasUnsavedChanges(true);
     setRows(prev => prev.map(row => {
       if (row.date === date) {
         return { ...row, dailyNote: text };
@@ -1519,6 +1586,9 @@ export default function App() {
     const formattedMonth = selectedMonth.trim() || "অনির্ধারিত_মাস";
     const cleanedId = `${formattedClass}_রোল-${formattedRoll}_${formattedName}_${formattedMonth}`.replace(/[\s./#$[\]]/g, "_");
     
+    const cCls = getCanonicalClassName(studentClass);
+    const nRoll = normalizeRollDigits(studentRoll);
+
     try {
       const docRef = doc(db, "routines", cleanedId);
       await setDoc(docRef, {
@@ -1545,12 +1615,58 @@ export default function App() {
         principalName,
         updatedAt: serverTimestamp()
       });
+
+      // Synchronously cache to local storage for this student
+      if (cCls && nRoll) {
+        localStorage.setItem(`routine_rows_${cCls}_${nRoll}`, JSON.stringify(rows));
+        if (studentPhoto) {
+          localStorage.setItem(`student_photo_${cCls}_${nRoll}`, studentPhoto);
+        }
+      }
+      localStorage.setItem("routineRows", JSON.stringify(rows));
+
+      // Update in-memory savedRoutines immediately so UI displays current record instantly
+      setSavedRoutines(prev => {
+        const itemData = {
+          id: cleanedId,
+          studentName,
+          studentClass,
+          studentRoll,
+          studentPhoto,
+          selectedMonth,
+          daysCount,
+          rows,
+          updatedAt: new Date()
+        };
+        const idx = prev.findIndex(r => r.id === cleanedId);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...itemData };
+          return next;
+        } else {
+          return [itemData, ...prev];
+        }
+      });
+
       setSavingStatus("success");
-      setTimeout(() => setSavingStatus("idle"), 3000);
+      setHasUnsavedChanges(false);
+      playSuccessChime();
+      setRoutineToastMsg(`সাফল্যের সাথে ${studentName || "শিক্ষার্থী"} (রোল: ${toBnNum(studentRoll)})-এর ডেইলী রুটিন ডাটাবেজে সংরক্ষণ করা হয়েছে!`);
+      setTimeout(() => setSavingStatus("idle"), 3500);
+      setTimeout(() => setRoutineToastMsg(""), 5000);
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, `routines/${cleanedId}`);
-      setSavingStatus("error");
-      setTimeout(() => setSavingStatus("idle"), 4000);
+      // Fallback: Ensure offline persistence
+      if (cCls && nRoll) {
+        localStorage.setItem(`routine_rows_${cCls}_${nRoll}`, JSON.stringify(rows));
+      }
+      localStorage.setItem("routineRows", JSON.stringify(rows));
+      setSavingStatus("success");
+      setHasUnsavedChanges(false);
+      playSuccessChime();
+      setRoutineToastMsg(`অফলাইন মেমরিতে ${studentName || "শিক্ষার্থী"} (রোল: ${toBnNum(studentRoll)})-এর রুটিন সফলভাবে সংরক্ষিত হয়েছে!`);
+      setTimeout(() => setSavingStatus("idle"), 3500);
+      setTimeout(() => setRoutineToastMsg(""), 5000);
     } finally {
       setIsSaving(false);
     }
@@ -1843,23 +1959,32 @@ export default function App() {
   const loadStudentData = (cls: string, roll: string, name: string) => {
     const cCls = getCanonicalClassName(cls);
     const nRoll = normalizeRollDigits(roll);
+
+    // Prevent in-flight auto-save from overwriting this new student with previous student's rows!
+    isSwitchingStudentRef.current = true;
+    activeLoadedStudentRef.current = { cCls, nRoll };
+
     if (cCls && nRoll) {
       // Photo
       const photo = localStorage.getItem(`student_photo_${cCls}_${nRoll}`);
       setStudentPhoto(photo || "");
 
-      // Routine Rows
+      // Routine Rows - Look for previously saved rows for THIS student
       const localRows = localStorage.getItem(`routine_rows_${cCls}_${nRoll}`);
+      let rowsToSet: DayRow[] | null = null;
+
       if (localRows) {
         try {
           const parsed = JSON.parse(localRows);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setRows(parsed);
+            rowsToSet = parsed;
           }
         } catch (e) {
-          console.error(e);
+          console.error("Local rows parse error:", e);
         }
-      } else {
+      }
+
+      if (!rowsToSet) {
         const cloudItem = savedRoutines.find((r: any) => {
           return (
             getCanonicalClassName(r.studentClass || "") === cCls &&
@@ -1867,12 +1992,96 @@ export default function App() {
           );
         });
         if (cloudItem && Array.isArray(cloudItem.rows) && cloudItem.rows.length > 0) {
-          setRows(cloudItem.rows);
+          rowsToSet = cloudItem.rows;
         }
       }
+
+      // CRITICAL DATA ISOLATION:
+      // If this student already has saved routine rows, load them.
+      // If NOT, ALWAYS load a fresh blank routine for this student!
+      // This completely prevents the previous student's checkmarks, notes, and goals from leaking!
+      if (rowsToSet) {
+        setRows(rowsToSet);
+      } else {
+        const freshBlank = createBlankRoutineRows(daysCount);
+        setRows(freshBlank);
+      }
+    } else {
+      setStudentPhoto("");
+      setRows(createBlankRoutineRows(daysCount));
     }
 
+    setHasUnsavedChanges(false);
     loadStudentProgress(cls, roll, name);
+
+    setTimeout(() => {
+      isSwitchingStudentRef.current = false;
+    }, 150);
+  };
+
+  const getNextStudentInfo = () => {
+    const currentNormRoll = parseInt(normalizeRollDigits(studentRoll) || "0", 10);
+    if (studentsInCurrentClass.length > 0) {
+      const currentIndex = studentsInCurrentClass.findIndex(
+        s => parseInt(normalizeRollDigits(s.roll) || "0", 10) === currentNormRoll
+      );
+      if (currentIndex >= 0 && currentIndex < studentsInCurrentClass.length - 1) {
+        const nextStud = studentsInCurrentClass[currentIndex + 1];
+        return {
+          roll: nextStud.roll,
+          name: nextStud.name,
+          isKnown: true
+        };
+      }
+    }
+    const nextNum = currentNormRoll > 0 ? currentNormRoll + 1 : 1;
+    const match = findStudentByClassAndRoll(studentClass, nextNum.toString());
+    return {
+      roll: nextNum.toString(),
+      name: match ? match.name : "",
+      isKnown: !!match
+    };
+  };
+
+  const handleNextStudentEntry = async () => {
+    // 1. First save current student routine to cloud and local storage
+    await handleSaveToCloud();
+
+    // 2. Determine next roll/student
+    const nextInfo = getNextStudentInfo();
+
+    // 3. Switch active student states
+    setStudentRoll(toBnNum(nextInfo.roll));
+    if (nextInfo.name) {
+      setStudentName(nextInfo.name);
+    } else {
+      setStudentName("");
+    }
+
+    // 4. Safely load next student's routine data (or a clean blank slate)
+    loadStudentData(studentClass, nextInfo.roll, nextInfo.name);
+
+    // 5. Scroll smoothly up to top of routine sheet so teacher can start immediately
+    const sheetEl = document.getElementById("routine-a4-sheet");
+    if (sheetEl) {
+      sheetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleResetToBlankRoutine = () => {
+    const confirmMsg = `আপনি কি রোল ${toBnNum(studentRoll)} (${studentName || "চলতি শিক্ষার্থী"})-এর রুটিনটি সম্পূর্ণ খালি করে নতুন করে এন্ট্রি দিতে চান?\n\nএটি স্ক্রিনের সব টিকচিহ্ন ও মন্তব্য মুছে একটি নতুন খালি ফরম প্রস্তুত করবে।`;
+    if (window.confirm(confirmMsg)) {
+      const freshBlank = createBlankRoutineRows(daysCount);
+      setRows(freshBlank);
+      setHasUnsavedChanges(true);
+      const cCls = getCanonicalClassName(studentClass);
+      const nRoll = normalizeRollDigits(studentRoll);
+      if (cCls && nRoll) {
+        localStorage.setItem(`routine_rows_${cCls}_${nRoll}`, JSON.stringify(freshBlank));
+      }
+      setRoutineToastMsg(`রোল ${toBnNum(studentRoll)}-এর জন্য নতুন খালি ফরম প্রস্তুত করা হয়েছে।`);
+      setTimeout(() => setRoutineToastMsg(""), 3500);
+    }
   };
 
   const handleClassSelect = (newCls: string) => {
@@ -1906,6 +2115,11 @@ export default function App() {
     if (matched) {
       setStudentName(matched.name);
       loadStudentData(studentClass, matched.roll, matched.name);
+    } else {
+      const cleanVal = normalizeRollDigits(val);
+      if (cleanVal) {
+        loadStudentData(studentClass, cleanVal, studentName);
+      }
     }
   };
 
@@ -2832,6 +3046,29 @@ export default function App() {
                     </div>
                   </div>
                 )}
+
+                {/* Quick Save & Next Student Buttons in Step 2 */}
+                <div className="pt-2 border-t border-slate-200/80 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleSaveToCloud}
+                    disabled={isSaving}
+                    className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-black transition flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                    title="বর্তমান শিক্ষার্থীর রুটিন সংরক্ষণ করুন"
+                  >
+                    <Save className="w-3 h-3 text-emerald-200" />
+                    <span>{isSaving ? "সেভ হচ্ছে..." : "চলতি রুটিন সেভ"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextStudentEntry}
+                    disabled={isSaving}
+                    className="flex-1 py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-black transition flex items-center justify-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                    title="বর্তমান রুটিন সেভ করে পরবর্তী রোল নম্বরে যান"
+                  >
+                    <span>পরবর্তী রোল ({toBnNum(getNextStudentInfo().roll)}) 👉</span>
+                  </button>
+                </div>
               </div>
 
               {/* STEP 3: AUTO-LOADED STUDENT NAME & PHOTO UPLOAD */}
@@ -4436,6 +4673,163 @@ export default function App() {
             </div>
           )}
 
+          {/* Top Floating Toast Notification for Routine Operations */}
+          {routineToastMsg && (
+            <div className="no-print w-full max-w-[21cm] mb-3 p-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl shadow-lg border border-emerald-400 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle className="w-5 h-5 text-emerald-200 shrink-0" />
+                <span className="text-xs sm:text-sm font-black">{routineToastMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleNextStudentEntry}
+                className="px-3.5 py-1.5 bg-white text-emerald-950 hover:bg-emerald-50 rounded-lg text-xs font-black shrink-0 transition shadow-xs cursor-pointer flex items-center gap-1 active:scale-95"
+              >
+                <span>পরবর্তী রোল ({toBnNum(getNextStudentInfo().roll)}) এন্ট্রি দিন 👉</span>
+              </button>
+            </div>
+          )}
+
+          {/* DEDICATED HIGH-VISIBILITY ROUTINE ACTION & SAVE TOOLBAR */}
+          {activeTab === "routine" && (
+            <div className="no-print w-full max-w-[21cm] mb-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3.5 sm:p-4 rounded-2xl shadow-xl border border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-3">
+              {/* Left: Active Student Badge & Live Status */}
+              <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/15">
+                  <GraduationCap className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-xs font-black text-white">{studentClass}</span>
+                  <span className="text-white/40">•</span>
+                  <span className="text-xs font-black text-amber-300 font-mono">রোল: {toBnNum(studentRoll)}</span>
+                  <span className="text-white/40">•</span>
+                  <span className="text-xs font-bold text-slate-200 truncate max-w-[140px]">{studentName || "অনামিকা"}</span>
+                </div>
+
+                {hasUnsavedChanges ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-400/40 rounded-lg text-[11px] font-bold animate-pulse">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    <span>নতুন তথ্য এন্ট্রি হয়েছে (সেভ করুন)</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 rounded-lg text-[11px] font-bold">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>রুটিন সংরক্ষিত ও নিরাপদ</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Right: Actions (Save Routine, Next Roll, Blank Routine, Print) */}
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                {/* 1. SAVE ROUTINE BUTTON */}
+                <button
+                  type="button"
+                  onClick={handleSaveToCloud}
+                  disabled={isSaving}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 ${
+                    isSaving
+                      ? "bg-slate-700 text-slate-300 cursor-not-allowed"
+                      : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white ring-2 ring-emerald-400/50"
+                  }`}
+                  title="বর্তমান শিক্ষার্থীর চলতি রুটিন ক্লাউড ও ডিভাইসে স্থায়ীভাবে সংরক্ষণ করুন"
+                  id="save-daily-routine-btn"
+                >
+                  {isSaving ? (
+                    <RefreshCw className="w-4 h-4 animate-spin text-emerald-200" />
+                  ) : (
+                    <Save className="w-4 h-4 text-emerald-100" />
+                  )}
+                  <span>{isSaving ? "সংরক্ষণ হচ্ছে..." : "💾 ডেইলী রুটিন সেভ করুন"}</span>
+                </button>
+
+                {/* 2. NEXT ROLL BUTTON */}
+                <button
+                  type="button"
+                  onClick={handleNextStudentEntry}
+                  disabled={isSaving}
+                  className="px-3.5 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95"
+                  title="বর্তমান রুটিন সেভ করে পরবর্তী শিক্ষার্থীর জন্য সম্পূর্ণ নতুন ও নিরাপদ খালি ফরম খুলুন"
+                  id="next-roll-entry-btn"
+                >
+                  <span>➡️ পরবর্তী রোল ({toBnNum(getNextStudentInfo().roll)})</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                {/* 3. RESET TO BLANK ROUTINE */}
+                <button
+                  type="button"
+                  onClick={handleResetToBlankRoutine}
+                  className="px-2.5 py-2 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-bold border border-white/20 transition flex items-center gap-1 cursor-pointer"
+                  title="সব টিকচিহ্ন ও মন্তব্য মুছে নতুন খালি রুটিন ফরম শুরু করুন"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-300" />
+                  <span>খালি ফরম</span>
+                </button>
+
+                {/* 4. PRINT BUTTON */}
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="px-3 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow active:scale-95"
+                >
+                  <Printer className="w-3.5 h-3.5 text-slate-950" />
+                  <span>🖨️ প্রিন্ট</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* FLOATING STICKY QUICK ACTION BAR (ALWAYS VISIBLE DURING ROUTINE EDITING) */}
+          {activeTab === "routine" && (
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 backdrop-blur-md text-white px-3 sm:px-5 py-2.5 rounded-2xl shadow-2xl border border-indigo-400/40 flex items-center gap-2 sm:gap-3.5 no-print max-w-[95vw]">
+              <div className="flex items-center gap-2 pr-2 border-r border-slate-700 shrink-0">
+                <span className={`w-2.5 h-2.5 rounded-full ${hasUnsavedChanges ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`}></span>
+                <div className="text-left leading-tight hidden sm:block">
+                  <p className="text-[11px] font-black text-amber-300">
+                    রোল: {toBnNum(studentRoll)} | {studentName || "অনামিকা"}
+                  </p>
+                  <p className="text-[9px] text-slate-400 font-semibold">{studentClass}</p>
+                </div>
+                <span className="sm:hidden text-xs font-black text-amber-300">
+                  রোল {toBnNum(studentRoll)}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveToCloud}
+                disabled={isSaving}
+                className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 shrink-0 ${
+                  isSaving
+                    ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-500 text-white ring-1 ring-emerald-400/60"
+                }`}
+                title="রুটিন ডাটাবেজে সংরক্ষণ করুন"
+              >
+                {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-200" /> : <Save className="w-3.5 h-3.5 text-emerald-200" />}
+                <span>{isSaving ? "সেভ হচ্ছে..." : "💾 সেভ করুন"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNextStudentEntry}
+                disabled={isSaving}
+                className="px-3 sm:px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1 cursor-pointer shadow-md active:scale-95 shrink-0"
+                title="বর্তমান রুটিন সেভ করে পরবর্তী রোল এন্ট্রি দিন"
+              >
+                <span>পরবর্তী রোল ({toBnNum(getNextStudentInfo().roll)})</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="hidden md:flex px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition items-center gap-1 cursor-pointer shrink-0"
+              >
+                <Printer className="w-3.5 h-3.5 text-amber-400" />
+                <span>প্রিন্ট</span>
+              </button>
+            </div>
+          )}
+
           {/* Canvas sheet layout container info (Hidden on Print) */}
           <div className="no-print w-full max-w-[21cm] mb-3 flex items-center justify-between text-[11px] text-slate-500 bg-slate-100/90 px-3 py-1.5 rounded-lg border border-slate-200">
             <span className="flex items-center gap-1.5 font-medium">
@@ -5411,6 +5805,43 @@ export default function App() {
                       <p className="text-[10px] sm:text-[11px] font-black text-emerald-800 leading-normal italic">
                         "আসুন আমরা প্রতিজ্ঞা করি, আমরা কেবল একজন ভালো ছাত্র নয়, বরং একজন নীতিবান ও শুদ্ধাচারী সন্তান উপহার দেব এই সমাজকে।"
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Interactive Save and Next Student banner inside routine sheet view (Hidden during Print) */}
+                  <div className="no-print w-full my-3 p-3 bg-gradient-to-r from-emerald-50 via-indigo-50 to-emerald-50 border border-emerald-300 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-850 shadow-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                        ✓
+                      </div>
+                      <div className="text-left">
+                        <h4 className="text-xs font-black text-slate-900">
+                          {studentName || "শিক্ষার্থী"} (রোল {toBnNum(studentRoll)})-এর রুটিন তথ্য পূরণ সম্পন্ন হয়েছে?
+                        </h4>
+                        <p className="text-[10px] text-slate-600 font-semibold">
+                          সেভ বাটনে চাপলে তথ্য ক্লাউড ও ডিভাইসে স্থায়ীভাবে সংরক্ষিত হবে এবং পরবর্তী রোলের খালি ফরম সক্রিয় হবে।
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleSaveToCloud}
+                        disabled={isSaving}
+                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <Save className="w-3.5 h-3.5 text-emerald-200" />
+                        <span>{isSaving ? "সংরক্ষণ হচ্ছে..." : "💾 রুটিন সংরক্ষণ করুন"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNextStudentEntry}
+                        disabled={isSaving}
+                        className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <span>পরবর্তী রোল ({toBnNum(getNextStudentInfo().roll)}) এন্ট্রি</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -7104,6 +7535,7 @@ CREATE POLICY "Allow public read/write access" ON routines FOR ALL USING (true);
                   setStudentName(name);
                   setStudentClass(sClass);
                   setStudentRoll(roll);
+                  loadStudentData(sClass, roll, name);
                   setActiveTab("routine");
                 }}
               />
