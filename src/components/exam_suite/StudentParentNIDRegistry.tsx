@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { StudentSecurityProfile } from "./examTypes";
 import { SAMPLE_SECURITY_PROFILES } from "./examMockData";
-import { studentsByClass } from "../../studentsData";
+import { studentsByClass, addOrUpdateStudentToClass } from "../../studentsData";
 import { db } from "../../firebase";
 import { collection, doc, setDoc, getDocs, getDoc, serverTimestamp } from "firebase/firestore";
 
@@ -300,6 +300,19 @@ export const StudentParentNIDRegistry: React.FC = () => {
 
       setProfiles(updatedList);
       localStorage.setItem("dlikon_student_security_profiles", JSON.stringify(updatedList));
+
+      // Also sync to school central class roster so this student & roll appears across all dropdowns
+      try {
+        addOrUpdateStudentToClass(
+          profileToSave.className,
+          profileToSave.roll,
+          profileToSave.name,
+          profileToSave.fatherName,
+          profileToSave.guardianPhone
+        );
+      } catch (rosterErr) {
+        console.warn("Class roster sync warning:", rosterErr);
+      }
 
       // 2. Persist to Cloud Firestore
       try {

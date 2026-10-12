@@ -293,3 +293,70 @@ export function resetToDefaultStudents(): void {
   }
 }
 
+// Helper to normalize digits
+const bnToEn = (str: string | number): string => {
+  const map: Record<string, string> = { "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4", "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9" };
+  return String(str || "").replace(/[০-৯]/g, d => map[d] || d);
+};
+
+const enToBn = (str: string | number): string => {
+  const map: Record<string, string> = { "0": "০", "1": "১", "2": "২", "3": "৩", "4": "৪", "5": "৫", "6": "৬", "7": "৭", "8": "৮", "9": "৯" };
+  return String(str || "").replace(/[0-9]/g, d => map[d] || d);
+};
+
+/**
+ * Manually add or update a student for a specific class (e.g. নার্সারি, রোল ২৮)
+ */
+export function addOrUpdateStudentToClass(
+  className: string,
+  roll: string,
+  name: string,
+  fatherName?: string,
+  contactPhone?: string
+): Record<string, Student[]> {
+  const cleanedClass = className.trim().replace(/\s*শ্রেণি\s*$/i, "").replace(/\s*শ্রেণী\s*$/i, "").trim();
+  const currentDataset: Record<string, Student[]> = {};
+
+  // Clone existing dataset
+  for (const [cls, list] of Object.entries(studentsByClass)) {
+    currentDataset[cls] = [...list];
+  }
+
+  // Ensure current class list exists
+  if (!currentDataset[cleanedClass]) {
+    currentDataset[cleanedClass] = [];
+  }
+
+  const list = currentDataset[cleanedClass];
+  const targetNormRoll = bnToEn(roll).replace(/^0+/, "");
+
+  const existingIdx = list.findIndex(s => bnToEn(s.roll).replace(/^0+/, "") === targetNormRoll);
+  const formattedRoll = enToBn(targetNormRoll) || roll;
+
+  const newEntry: Student = {
+    roll: formattedRoll,
+    name: name.trim() || `রোল ${formattedRoll}`,
+    fatherName: fatherName?.trim(),
+    contactPhone: contactPhone?.trim()
+  };
+
+  if (existingIdx >= 0) {
+    list[existingIdx] = { ...list[existingIdx], ...newEntry };
+  } else {
+    list.push(newEntry);
+    // Sort naturally by numeric roll
+    list.sort((a, b) => {
+      const aNum = parseInt(bnToEn(a.roll).replace(/[^\d]/g, "") || "0", 10);
+      const bNum = parseInt(bnToEn(b.roll).replace(/[^\d]/g, "") || "0", 10);
+      return aNum - bNum;
+    });
+  }
+
+  currentDataset[cleanedClass] = list;
+  if (cleanedClass === "নার্সারি") currentDataset["নার্সারী"] = list;
+  if (cleanedClass === "নার্সারী") currentDataset["নার্সারি"] = list;
+
+  saveCustomStudents(currentDataset);
+  return currentDataset;
+}
+

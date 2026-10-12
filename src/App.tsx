@@ -85,7 +85,7 @@ import {
   teacherPrompt,
   parentPrompt
 } from "./slidesData";
-import { studentsByClass, Student } from "./studentsData";
+import { studentsByClass, Student, addOrUpdateStudentToClass } from "./studentsData";
 import { getInitialStudentProgress } from "./studentProgressRegistry";
 import { 
   collection, 
@@ -3158,6 +3158,33 @@ export default function App() {
                     </div>
                   )}
                 </div>
+
+                {/* Missing / Manual Roll Helper Banner (e.g. Nursery Roll 28) */}
+                {!matchedStudent && studentRoll.trim() && (
+                  <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded-lg flex flex-wrap items-center justify-between gap-1.5 text-xs text-amber-900 animate-fadeIn">
+                    <div className="flex items-center gap-1.5 font-medium text-[11px]">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <span>
+                        রোল <strong>{toBnNum(studentRoll)}</strong> {studentClass} শ্রেণির তালিকায় নেই (ম্যানুয়াল রোল)। আপনি সরাসরি ফর্ম পূরণ করতে পারেন।
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        addOrUpdateStudentToClass(
+                          studentClass,
+                          studentRoll,
+                          studentName.trim() || `শিক্ষার্থী (রোল ${toBnNum(studentRoll)})`
+                        );
+                        setRoutineToastMsg(`সাফল্যের সাথে রোল ${toBnNum(studentRoll)} (${studentName || "শিক্ষার্থী"}) ${studentClass} শ্রেণির তালিকায় স্থায়ীভাবে যুক্ত হয়েছে!`);
+                      }}
+                      className="px-2.5 py-1 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-[11px] font-bold shadow-sm transition flex items-center gap-1 cursor-pointer"
+                      title="এই রোলটিকে ক্লাসের মূল তালিকায় স্থায়ীভাবে সংরক্ষণ করুন"
+                    >
+                      <span>➕ {studentClass} তালিকায় রোল {toBnNum(studentRoll)} সংরক্ষণ করুন</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Quick Roll Selector Chips */}
                 {studentsInCurrentClass.length > 0 && (
